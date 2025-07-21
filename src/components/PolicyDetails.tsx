@@ -39,16 +39,17 @@ const PolicyDetails: React.FC<PolicyDetailsProps> = ({
     <div 
       className="bg-white rounded-xl shadow-md overflow-hidden transition-all duration-200"
       style={{ 
-        height: selectedPolicy ? '300px' : '125px',
+        height: '100%',
         display: 'flex',
         flexDirection: 'column'
       }}
     >
       {selectedPolicy ? (
         <>
+
           {/* Header - Fixed height */}
-          <div className="flex items-center justify-between border-b border-gray-200 p-4 bg-white">
-            <div className="flex items-center gap-4">
+          <div className="border-b border-gray-200 bg-white">
+            <div className="flex items-center justify-between p-4">
               <h3 className="text-lg font-semibold text-black">Policy Details</h3>
               <button 
                 onClick={() => onToggleSavedPolicy(selectedPolicy.id)}
@@ -66,15 +67,10 @@ const PolicyDetails: React.FC<PolicyDetailsProps> = ({
                   </>
                 )}
               </button>
-              <button 
-                className="text-sm text-blue-600 hover:text-blue-800 whitespace-nowrap"
-                onClick={onBackToPhase}
-              >
-                ← Back to Phase
-              </button>
             </div>
-            
-            <div className="flex">
+
+            {/* Tabs Below Header */}
+            <div className="flex px-4 border-t border-gray-100">
               <button
                 className={`py-2 px-4 font-medium text-sm ${
                   activeTab === 'overview'
@@ -120,6 +116,7 @@ const PolicyDetails: React.FC<PolicyDetailsProps> = ({
               )}
             </div>
           </div>
+
           
           {/* Scrollable Content Area */}
           <div className="overflow-y-auto flex-1 p-4">

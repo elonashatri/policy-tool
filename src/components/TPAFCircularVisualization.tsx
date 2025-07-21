@@ -18,7 +18,6 @@ import purpleBg from '../assets/dimension-bgs/purple-bg.png';
 import redBg from '../assets/dimension-bgs/red-bg.png';
 import yellowBg from '../assets/dimension-bgs/yellow-bg.png';
 
-
 type PolicyPosition = {
   policy: Policy;
   x: number;
@@ -81,6 +80,12 @@ const TPAFCircularVisualization: React.FC = () => {
   const [readPolicies, setReadPolicies] = useState<Set<number>>(new Set());
   const [savedPolicies, setSavedPolicies] = useState<Set<number>>(new Set());
   const [expertError, setExpertError] = useState<string | null>(null);
+
+  const viewBoxWidth = 600;
+  const viewBoxHeight = 500;
+  const centerX = viewBoxWidth / 2;
+  const centerY = viewBoxHeight / 2;
+
 
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -392,8 +397,9 @@ const TPAFCircularVisualization: React.FC = () => {
     return connections;
   };
 
-  // Convert polar to cartesian coordinates
-  const polarToCartesian = (angle: number, radius: number, centerX: number = 400, centerY: number = 250) => {
+
+  // Convert polar to cartesian coordinates - now requires explicit center coordinates
+  const polarToCartesian = (angle: number, radius: number, centerX: number, centerY: number) => {
     const radian = (angle - 90) * Math.PI / 180;
     return {
       x: centerX + radius * Math.cos(radian),
@@ -441,6 +447,7 @@ const TPAFCircularVisualization: React.FC = () => {
           const ring = phaseRingConfig[phase.id as keyof typeof phaseRingConfig];
           if (!ring) return;
           
+          
           const segmentWidth = 72 / phasePolicies.length;
           const colors = colorVariations[dimension.id as keyof typeof colorVariations];
           
@@ -466,7 +473,8 @@ const TPAFCircularVisualization: React.FC = () => {
             
             const centerAngle = (segmentStartAngle + segmentEndAngle) / 2;
             const midRadius = (ring.innerRadius + ring.outerRadius) / 2;
-            const position = polarToCartesian(centerAngle, midRadius);
+            const position = polarToCartesian(centerAngle, midRadius, centerX, centerY);  // Added centerX and centerY
+
             
             policyPositions.push({
               policy,
@@ -673,46 +681,47 @@ const TPAFCircularVisualization: React.FC = () => {
         </div>
       </div>
 
-      {/* Policy Details - Fixed position, moved up to top of circle */}
+      {/* Journey Components - Moved below header */}
       <div className="w-full flex justify-center mb-4">
         <div style={{ width: 'min(1448px, 95vw)' }}>
-          <PolicyDetails
+          <CompactSidebar
+            selectedDimension={selectedDimension}
+            selectedPhase={selectedPhase}
             selectedPolicy={selectedPolicy}
-            hoveredPolicy={hoveredPolicy}
+            selectedKeyword={selectedKeyword}
+            searchQuery={searchQuery}
+            readPolicies={readPolicies}
             savedPolicies={savedPolicies}
-            activeTab={activeTab}
-            experts={experts}
-            isLoadingExperts={isLoadingExperts}
-            expertError={expertError}
-            dimensionBackgrounds={dimensionBackgrounds}
-            onToggleSavedPolicy={toggleSavedPolicy}
-            onBackToPhase={() => {
-              const phaseId = selectedPolicy?.phaseId;
-              setSelectedPolicy(null);
-              setSelectedPhase(phaseId || null);
-            }}
-            onTabChange={setActiveTab}
+            data={data}
+            onResetAllSelections={resetAllSelections}
+            onSetSelectedDimension={setSelectedDimension}
+            onSetSelectedPhase={setSelectedPhase}
+            onSetSelectedKeyword={setSelectedKeyword}
+            onSetSearchQuery={setSearchQuery}
+            onDownloadJourney={downloadJourney}
             getDimension={getDimension}
             getPhase={getPhase}
           />
         </div>
       </div>
 
+
+
       {/* Main Content Container - Sidebar moved to top right */}
       <div className="w-full flex justify-center mb-8">
-        <div className="grid grid-cols-4 gap-6" style={{ width: 'min(1448px, 95vw)' }}>
+        <div className="grid grid-cols-8 gap-6" style={{ width: 'min(1448px, 95vw)' }}>
           {/* Circular Visualization - Now takes 3/4 of space */}
-          <div className="col-span-3">
-            <div className="bg-white rounded-2xl p-4 shadow-md min-h-[700px] border border-gray-100 relative">
-              <svg ref={svgRef} viewBox="0 0 800 500" className="w-full h-full" style={{ overflow: 'visible' }}>
+          <div className="col-span-5">
+            <div className="bg-white rounded-3xl p-4 shadow-md min-h-[700px] border border-gray-100 relative">
+              <svg ref={svgRef} viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`} className="w-full h-full" style={{ overflow: 'visible' }}>
                 {/* Background dimension slices */}
                 {data.dimensions.map(dimension => (
                   <path
                     key={`bg-${dimension.id}`}
                     d={`
-                      M 400,250
-                      L ${polarToCartesian(dimension.angle - 36, 210, 400, 250).x},${polarToCartesian(dimension.angle - 36, 210, 400, 250).y}
-                      A 210,210 0 0,1 ${polarToCartesian(dimension.angle + 36, 210, 400, 250).x},${polarToCartesian(dimension.angle + 36, 210, 400, 250).y}
+                      M ${centerX},${centerY}
+                      L ${polarToCartesian(dimension.angle - 36, 210, centerX, centerY).x},${polarToCartesian(dimension.angle - 36, 210, centerX, centerY).y}
+                      A 210,210 0 0,1 ${polarToCartesian(dimension.angle + 36, 210, centerX, centerY).x},${polarToCartesian(dimension.angle + 36, 210, centerX, centerY).y}
                       Z
                     `}
                     fill={dimension.color}
@@ -724,8 +733,8 @@ const TPAFCircularVisualization: React.FC = () => {
                 {Object.entries(phaseRingConfig).map(([phaseId, ring]) => (
                   <circle
                     key={`guide-ring-${phaseId}`}
-                    cx="400"
-                    cy="250"
+                    cx={centerX}
+                    cy={centerY}
                     r={ring.outerRadius}
                     fill="none"
                     stroke="#e2e8f0"
@@ -744,13 +753,13 @@ const TPAFCircularVisualization: React.FC = () => {
                     <g key={`segment-group-${segment.policy.id}-${index}`}>
                       <path
                         d={`
-                          M ${polarToCartesian(segment.startAngle, segment.innerRadius, 400, 250).x},${polarToCartesian(segment.startAngle, segment.innerRadius, 400, 250).y}
-                          L ${polarToCartesian(segment.startAngle, segment.outerRadius, 400, 250).x},${polarToCartesian(segment.startAngle, segment.outerRadius, 400, 250).y}
+                          M ${polarToCartesian(segment.startAngle, segment.innerRadius, centerX, centerY).x},${polarToCartesian(segment.startAngle, segment.innerRadius, centerX, centerY).y}
+                          L ${polarToCartesian(segment.startAngle, segment.outerRadius, centerX, centerY).x},${polarToCartesian(segment.startAngle, segment.outerRadius, centerX, centerY).y}
                           A ${segment.outerRadius},${segment.outerRadius} 0 ${segment.endAngle - segment.startAngle <= 180 ? 0 : 1},1 
-                            ${polarToCartesian(segment.endAngle, segment.outerRadius, 400, 250).x},${polarToCartesian(segment.endAngle, segment.outerRadius, 400, 250).y}
-                          L ${polarToCartesian(segment.endAngle, segment.innerRadius, 400, 250).x},${polarToCartesian(segment.endAngle, segment.innerRadius, 400, 250).y}
+                            ${polarToCartesian(segment.endAngle, segment.outerRadius, centerX, centerY).x},${polarToCartesian(segment.endAngle, segment.outerRadius, centerX, centerY).y}
+                          L ${polarToCartesian(segment.endAngle, segment.innerRadius, centerX, centerY).x},${polarToCartesian(segment.endAngle, segment.innerRadius, centerX, centerY).y}
                           A ${segment.innerRadius},${segment.innerRadius} 0 ${segment.endAngle - segment.startAngle <= 180 ? 0 : 1},0 
-                            ${polarToCartesian(segment.startAngle, segment.innerRadius, 400, 250).x},${polarToCartesian(segment.startAngle, segment.innerRadius, 400, 250).y}
+                            ${polarToCartesian(segment.startAngle, segment.innerRadius, centerX, centerY).x},${polarToCartesian(segment.startAngle, segment.innerRadius, centerX, centerY).y}
                           Z
                         `}
                         fill={isSaved ? segment.color : 'transparent'}
@@ -763,25 +772,28 @@ const TPAFCircularVisualization: React.FC = () => {
                         }}
                       />
                       {isSaved && (
-                        <text
-                          x={polarToCartesian(
-                            (segment.startAngle + segment.endAngle) / 2,
-                            (segment.innerRadius + segment.outerRadius) / 2,
-                            400, 250
-                          ).x}
-                          y={polarToCartesian(
-                            (segment.startAngle + segment.endAngle) / 2,
-                            (segment.innerRadius + segment.outerRadius) / 2,
-                            400, 250
-                          ).y}
-                          textAnchor="middle"
-                          dominantBaseline="middle"
-                          fill="white"
-                          fontSize="12"
-                          fontWeight="bold"
-                        >
-                          ✓
-                        </text>
+                          <text
+                            x={polarToCartesian(
+                              (segment.startAngle + segment.endAngle) / 2,
+                              (segment.innerRadius + segment.outerRadius) / 2,
+                              centerX,  // Replaced hardcoded 400
+                              centerY   // Replaced hardcoded 250
+                            ).x}
+                            y={polarToCartesian(
+                              (segment.startAngle + segment.endAngle) / 2,
+                              (segment.innerRadius + segment.outerRadius) / 2,
+                              centerX,  // Replaced hardcoded 400
+                              centerY   // Replaced hardcoded 250
+                            ).y}
+                            textAnchor="middle"
+                            dominantBaseline="middle"
+                            fill="black"
+                            fontSize="12"
+                            fontWeight="bold"
+                          >
+                            {/*  maybe add a checkmark or something */}
+                            {/* ✓ */} 
+                          </text>
                       )}
                     </g>
                   );
@@ -789,8 +801,8 @@ const TPAFCircularVisualization: React.FC = () => {
 
                 {/* Center Circle */}
                 <circle
-                  cx="400"
-                  cy="250"
+                  cx={centerX}
+                  cy={centerY}
                   r="80"
                   fill="#1e293b"
                   stroke="white"
@@ -799,8 +811,8 @@ const TPAFCircularVisualization: React.FC = () => {
 
                 {/* Center Text */}
                 <text
-                  x="400"
-                  y="245"
+                  x={centerX} 
+                  y={centerY - 10} 
                   textAnchor="middle"
                   alignmentBaseline="middle"
                   className="text-lg font-bold fill-white"
@@ -808,8 +820,8 @@ const TPAFCircularVisualization: React.FC = () => {
                   TPAF
                 </text>
                 <text
-                  x="400"
-                  y="265"
+                  x={centerX}  
+                  y={centerY + 10} 
                   textAnchor="middle"
                   alignmentBaseline="middle"
                   className="text-xs fill-slate-300"
@@ -850,11 +862,11 @@ const TPAFCircularVisualization: React.FC = () => {
                       
                       <path
                         d={`
-                          M ${polarToCartesian(segmentStartAngle, innerRadius).x},${polarToCartesian(segmentStartAngle, innerRadius).y}
-                          L ${polarToCartesian(segmentStartAngle, outerRadius).x},${polarToCartesian(segmentStartAngle, outerRadius).y}
-                          A ${outerRadius},${outerRadius} 0 0,1 ${polarToCartesian(segmentEndAngle, outerRadius).x},${polarToCartesian(segmentEndAngle, outerRadius).y}
-                          L ${polarToCartesian(segmentEndAngle, innerRadius).x},${polarToCartesian(segmentEndAngle, innerRadius).y}
-                          A ${innerRadius},${innerRadius} 0 0,0 ${polarToCartesian(segmentStartAngle, innerRadius).x},${polarToCartesian(segmentStartAngle, innerRadius).y}
+                          M ${polarToCartesian(segmentStartAngle, innerRadius, centerX, centerY).x},${polarToCartesian(segmentStartAngle, innerRadius, centerX, centerY).y}
+                          L ${polarToCartesian(segmentStartAngle, outerRadius, centerX, centerY).x},${polarToCartesian(segmentStartAngle, outerRadius, centerX, centerY).y}
+                          A ${outerRadius},${outerRadius} 0 0,1 ${polarToCartesian(segmentEndAngle, outerRadius, centerX, centerY).x},${polarToCartesian(segmentEndAngle, outerRadius, centerX, centerY).y}
+                          L ${polarToCartesian(segmentEndAngle, innerRadius, centerX, centerY).x},${polarToCartesian(segmentEndAngle, innerRadius, centerX, centerY).y}
+                          A ${innerRadius},${innerRadius} 0 0,0 ${polarToCartesian(segmentStartAngle, innerRadius, centerX, centerY).x},${polarToCartesian(segmentStartAngle, innerRadius, centerX, centerY).y}
                           Z
                         `}
                         fill={`url(#dimension-pattern-${dimension.id})`}
@@ -866,14 +878,13 @@ const TPAFCircularVisualization: React.FC = () => {
                       <path
                         id={`text-path-${dimension.id}`}
                         d={`
-                          M ${polarToCartesian(segmentStartAngle + 5, midRadius).x},${polarToCartesian(segmentStartAngle + 5, midRadius).y}
+                          M ${polarToCartesian(segmentStartAngle + 5, midRadius, centerX, centerY).x},${polarToCartesian(segmentStartAngle + 5, midRadius, centerX, centerY).y}
                           A ${midRadius},${midRadius} 0 ${segmentEndAngle - segmentStartAngle > 180 ? 1 : 0},1 
-                          ${polarToCartesian(segmentEndAngle - 5, midRadius).x},${polarToCartesian(segmentEndAngle - 5, midRadius).y}
+                          ${polarToCartesian(segmentEndAngle - 5, midRadius, centerX, centerY).x},${polarToCartesian(segmentEndAngle - 5, midRadius, centerX, centerY).y}
                         `}
                         fill="none"
                         stroke="none"
                       />
-                      
                       <text
                         fill="white"
                         fontSize="17"
@@ -904,8 +915,8 @@ const TPAFCircularVisualization: React.FC = () => {
                   return (
                     <circle
                       key={`dot-${position.policy.id}-${index}`}
-                      cx={position.x}
-                      cy={position.y}
+                      cx={position.x}  // Changed from centerX to position.x
+                      cy={position.y}  // Changed from centerY to position.y
                       r={isSelected ? 6 : isHovered ? 5 : hasConnectionToSelected ? 5 : 4}
                       fill="#ffffff"
                       stroke={dimension?.color || '#000000'}
@@ -951,22 +962,24 @@ const TPAFCircularVisualization: React.FC = () => {
           </div>
 
           {/* Compact Sidebar - Now 1/4 of space */}
-          <div className="col-span-1">
-            <CompactSidebar
-              selectedDimension={selectedDimension}
-              selectedPhase={selectedPhase}
+          {/* Policy Details - Moved to sidebar */}
+          <div className="col-span-3">
+            <PolicyDetails
               selectedPolicy={selectedPolicy}
-              selectedKeyword={selectedKeyword}
-              searchQuery={searchQuery}
-              readPolicies={readPolicies}
+              hoveredPolicy={hoveredPolicy}
               savedPolicies={savedPolicies}
-              data={data}
-              onResetAllSelections={resetAllSelections}
-              onSetSelectedDimension={setSelectedDimension}
-              onSetSelectedPhase={setSelectedPhase}
-              onSetSelectedKeyword={setSelectedKeyword}
-              onSetSearchQuery={setSearchQuery}
-              onDownloadJourney={downloadJourney}
+              activeTab={activeTab}
+              experts={experts}
+              isLoadingExperts={isLoadingExperts}
+              expertError={expertError}
+              dimensionBackgrounds={dimensionBackgrounds}
+              onToggleSavedPolicy={toggleSavedPolicy}
+              onBackToPhase={() => {
+                const phaseId = selectedPolicy?.phaseId;
+                setSelectedPolicy(null);
+                setSelectedPhase(phaseId || null);
+              }}
+              onTabChange={setActiveTab}
               getDimension={getDimension}
               getPhase={getPhase}
             />
