@@ -4,6 +4,9 @@ import { useTPAFData } from '../hooks/useTPAFData';
 import type { Policy, Dimension, Phase } from '../services/tpafDataService';
 import Breadcrumbs from './Breadcrumbs';
 import type { BreadcrumbItem } from './Breadcrumbs';
+import PolicyDetails from './PolicyDetails';
+import CompactSidebar from './SideBar';
+import { useJourneyExporter } from './JourneyExporter';
 import coverImage from '../assets/only-cover.png';
 import g20Logo from '../assets/g20-logo.png';
 import { fetchExpertDetails as fetchExpertDetailsAPI, fetchExpertsByFilters } from '../services/unescoExpertService';
@@ -14,6 +17,7 @@ import greenBg from '../assets/dimension-bgs/green-bg.png';
 import purpleBg from '../assets/dimension-bgs/purple-bg.png';
 import redBg from '../assets/dimension-bgs/red-bg.png';
 import yellowBg from '../assets/dimension-bgs/yellow-bg.png';
+
 
 type PolicyPosition = {
   policy: Policy;
@@ -47,7 +51,6 @@ const phaseRingConfig = {
   'monitoring-and-evaluation': { innerRadius: 180, outerRadius: 210 }
 };
 
-
 const TPAFCircularVisualization: React.FC = () => {
   const expertCache = useRef(new Map<string, UNESCOExpert>()).current;
   const { data, loading, error, reloadData } = useTPAFData(process.env.PUBLIC_URL + '/data.xlsx');
@@ -74,18 +77,28 @@ const TPAFCircularVisualization: React.FC = () => {
     keywords: string[];
   } | null>(null);
   
-  // New journey tracking state
+  // Journey tracking state
   const [readPolicies, setReadPolicies] = useState<Set<number>>(new Set());
   const [savedPolicies, setSavedPolicies] = useState<Set<number>>(new Set());
+  const [expertError, setExpertError] = useState<string | null>(null);
 
   const svgRef = useRef<SVGSVGElement>(null);
+
+  // Initialize journey exporter
+  const { exportJourneyPDF, exportJourneyJSON } = useJourneyExporter({
+    savedPolicies,
+    readPolicies,
+    data,
+    svgRef
+  });
+
   const fetchExpertDetails = useCallback(async (id: string): Promise<UNESCOExpert | null> => {
     if (expertCache.has(id)) {
       return expertCache.get(id) || null;
     }
     
     try {
-      const expert = await fetchExpertDetailsAPI(id); // Using the consistently named import
+      const expert = await fetchExpertDetailsAPI(id);
       if (expert) {
         expertCache.set(id, expert);
       }
@@ -95,6 +108,7 @@ const TPAFCircularVisualization: React.FC = () => {
       return null;
     }
   }, [expertCache]);
+
   const resetAllSelections = useCallback(() => {
     setSelectedDimension('all');
     setSelectedPhase(null);
@@ -106,9 +120,8 @@ const TPAFCircularVisualization: React.FC = () => {
     setActiveTab('overview');
   }, []);
 
-  // Debounced hover handlers to prevent flickering
+  // Debounced hover handlers
   const handleMouseEnter = useCallback((policy: Policy) => {
-    // Always allow hover, but don't show tooltip if selected
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
     }
@@ -124,6 +137,31 @@ const TPAFCircularVisualization: React.FC = () => {
     hoverTimeoutRef.current = setTimeout(() => {
       setHoveredPolicy(null);
     }, 100);
+  }, []);
+
+  // Journey tracking functions
+  const toggleSavedPolicy = useCallback((policyId: number) => {
+    setSavedPolicies(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(policyId)) {
+        newSet.delete(policyId);
+      } else {
+        newSet.add(policyId);
+      }
+      localStorage.setItem('savedPolicies', JSON.stringify(Array.from(newSet)));
+      return newSet;
+    });
+  }, []);
+
+  const markPolicyRead = useCallback((policyId: number) => {
+    setReadPolicies(prev => {
+      const newSet = new Set(prev);
+      if (!newSet.has(policyId)) {
+        newSet.add(policyId);
+        localStorage.setItem('readPolicies', JSON.stringify(Array.from(newSet)));
+      }
+      return newSet;
+    });
   }, []);
 
   // Helper functions for breadcrumb navigation
@@ -160,88 +198,33 @@ const TPAFCircularVisualization: React.FC = () => {
     }
   };
 
-  const [expertError, setExpertError] = useState<string | null>(null);
-    // Mark policy as saved/unsaved
+  // Enhanced download function with PDF support
+  const downloadJourney = useCallback(async () => {
+    try {
+      await exportJourneyPDF();
+    } catch (error) {
+      console.error('PDF export failed, falling back to JSON:', error);
+      exportJourneyJSON();
+    }
+  }, [exportJourneyPDF, exportJourneyJSON]);
 
-
-    // Journey tracking functions
-    const toggleSavedPolicy = useCallback((policyId: number) => {
-      setSavedPolicies(prev => {
-        const newSet = new Set(prev);
-        if (newSet.has(policyId)) {
-          newSet.delete(policyId);
-        } else {
-          newSet.add(policyId);
-        }
-        localStorage.setItem('savedPolicies', JSON.stringify(Array.from(newSet)));
-        return newSet;
-      });
-    }, []);
-
-  const markPolicyRead = useCallback((policyId: number) => {
-    setReadPolicies(prev => {
-      const newSet = new Set(prev);
-      if (!newSet.has(policyId)) {
-        newSet.add(policyId);
-        localStorage.setItem('readPolicies', JSON.stringify(Array.from(newSet)));
-      }
-      return newSet;
-    });
+  // Load saved/read policies from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('savedPolicies');
+    if (saved) setSavedPolicies(new Set(JSON.parse(saved).map(Number)));
+    
+    const read = localStorage.getItem('readPolicies');
+    if (read) setReadPolicies(new Set(JSON.parse(read).map(Number)));
   }, []);
 
-  const downloadJourney = useCallback(() => {
-    const totalPolicies = data.policies.length;
-    const savedCount = savedPolicies.size;
-    const readCount = readPolicies.size;
-    
-    const dimensionStats = data.dimensions.map(dim => {
-      const dimPolicies = data.policies.filter(p => p.dimension === dim.id);
-      const saved = dimPolicies.filter(p => savedPolicies.has(p.id)).length;
-      return {
-        dimension: dim.shortName,
-        total: dimPolicies.length,
-        saved,
-        percentage: Math.round((saved / dimPolicies.length) * 100)
-      };
-    });
-    
-    const phaseStats = data.phases.map(phase => {
-      const phasePolicies = data.policies.filter(p => p.phaseId === phase.id);
-      const saved = phasePolicies.filter(p => savedPolicies.has(p.id)).length;
-      return {
-        phase: phase.name,
-        total: phasePolicies.length,
-        saved,
-        percentage: Math.round((saved / phasePolicies.length) * 100)
-      };
-    });
-    
-    const journeyData = {
-      savedPolicies: Array.from(savedPolicies),
-      statistics: {
-        overall: {
-          saved: savedCount,
-          read: readCount,
-          total: totalPolicies,
-          percentage: Math.round((savedCount / totalPolicies) * 100)
-        },
-        byDimension: dimensionStats,
-        byPhase: phaseStats
-      },
-      timestamp: new Date().toISOString()
-    };
-    
-    const blob = new Blob([JSON.stringify(journeyData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `tpaf-journey-${new Date().toISOString().slice(0,10)}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }, [data.policies, data.dimensions, data.phases, savedPolicies, readPolicies]);
+  // Mark policy as read when selected
+  useEffect(() => {
+    if (selectedPolicy) {
+      markPolicyRead(selectedPolicy.id);
+    }
+  }, [selectedPolicy, markPolicyRead]);
 
+  // Load experts when policy is selected
   useEffect(() => {
     if (selectedPolicy?.keywords) {
       const fetchExperts = async () => {
@@ -273,8 +256,8 @@ const TPAFCircularVisualization: React.FC = () => {
       
       fetchExperts();
     }
-  }, [selectedPolicy]);
-  
+  }, [selectedPolicy, fetchExpertDetails]);
+
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
@@ -296,28 +279,8 @@ const TPAFCircularVisualization: React.FC = () => {
         });
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDimension, data.dimensions]);
 
-  // Load saved/read policies from localStorage on mount
-  useEffect(() => {
-    // Load saved policies from localStorage
-    const saved = localStorage.getItem('savedPolicies');
-    if (saved) setSavedPolicies(new Set(JSON.parse(saved).map(Number)));
-    
-    // Load read policies from localStorage
-    const read = localStorage.getItem('readPolicies');
-    if (read) setReadPolicies(new Set(JSON.parse(read).map(Number)));
-  }, []);
-
-  // Mark policy as read when selected
-  useEffect(() => {
-    if (selectedPolicy) {
-      markPolicyRead(selectedPolicy.id);
-    }
-  }, [selectedPolicy, markPolicyRead]);
-
-  
   useEffect(() => {
     if (selectedPhase) {
       const phase = data.phases.find(p => p.id === selectedPhase);
@@ -329,7 +292,6 @@ const TPAFCircularVisualization: React.FC = () => {
         });
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPhase, data.phases]);
 
   useEffect(() => {
@@ -374,7 +336,6 @@ const TPAFCircularVisualization: React.FC = () => {
   const getVisibleConnections = () => {
     if (!showConnections) return [];
     
-    // If a policy is selected, only show its connections
     if (selectedPolicy) {
       const connections: Array<{
         source: Policy;
@@ -383,7 +344,6 @@ const TPAFCircularVisualization: React.FC = () => {
         keywords: string[];
       }> = [];
       
-      // Get all connections for the selected policy
       if (selectedPolicy.connections) {
         selectedPolicy.connections.forEach(connection => {
           if (connection.strength >= 2) {
@@ -403,7 +363,6 @@ const TPAFCircularVisualization: React.FC = () => {
       return connections;
     }
     
-    // Otherwise, show all connections between visible policies
     const connections: Array<{
       source: Policy;
       target: Policy;
@@ -455,31 +414,26 @@ const TPAFCircularVisualization: React.FC = () => {
     const policySegments: PolicySegment[] = [];
     const policyPositions: PolicyPosition[] = [];
 
-    // Enhanced color variations with 4 shades per dimension
     const colorVariations = {
-      'infrastructure': ['#dbeafe', '#93c5fd', '#3b82f6', '#1d4ed8'], // Blue progression
-      'legislation': ['#fef3c7', '#fcd34d', '#f59e0b', '#d97706'],       // Yellow/Orange
-      'sustainability': ['#ede9fe', '#c4b5fd', '#8b5cf6', '#7e22ce'] ,      // Purple progression
-      'economic': ['#fee2e2', '#fca5a5', '#ef4444', '#b91c1c'],    // Red progression
-      'education': ['#d1fae5', '#6ee7b7', '#10b981', '#047857'] // Green progression
+      'infrastructure': ['#dbeafe', '#93c5fd', '#3b82f6', '#1d4ed8'],
+      'legislation': ['#fef3c7', '#fcd34d', '#f59e0b', '#d97706'],
+      'sustainability': ['#ede9fe', '#c4b5fd', '#8b5cf6', '#7e22ce'],
+      'economic': ['#fee2e2', '#fca5a5', '#ef4444', '#b91c1c'],
+      'education': ['#d1fae5', '#6ee7b7', '#10b981', '#047857']
     };
 
     if (data.dimensions.length > 0 && data.phases.length > 0) {
       data.dimensions.forEach((dimension) => {
         if (selectedDimension !== 'all' && dimension.id !== selectedDimension) return;
         
-        const dimensionStartAngle = dimension.angle - 36; // 72° total (36° each side)
-        
-        // Get policies for this dimension
+        const dimensionStartAngle = dimension.angle - 36;
         const dimensionPolicies = visiblePolicies.filter(p => p.dimension === dimension.id);
         
-        // Group policies by phase
         const policiesByPhase = data.phases.reduce((acc, phase) => {
           acc[phase.id] = dimensionPolicies.filter(p => p.phaseId === phase.id);
           return acc;
         }, {} as Record<string, Policy[]>);
         
-        // Create segments for each phase
         data.phases.forEach(phase => {
           const phasePolicies = policiesByPhase[phase.id] || [];
           if (phasePolicies.length === 0) return;
@@ -487,7 +441,6 @@ const TPAFCircularVisualization: React.FC = () => {
           const ring = phaseRingConfig[phase.id as keyof typeof phaseRingConfig];
           if (!ring) return;
           
-          // Calculate segment width (equal division)
           const segmentWidth = 72 / phasePolicies.length;
           const colors = colorVariations[dimension.id as keyof typeof colorVariations];
           
@@ -495,11 +448,9 @@ const TPAFCircularVisualization: React.FC = () => {
             const segmentStartAngle = dimensionStartAngle + (index * segmentWidth);
             const segmentEndAngle = segmentStartAngle + segmentWidth;
             
-            // Get color based on phase order (light to dark)
             const phaseIndex = data.phases.findIndex(p => p.id === phase.id);
             const color = colors[phaseIndex] || colors[0];
             
-            // Create the segment
             const segment: PolicySegment = {
               policy,
               dimension,
@@ -513,7 +464,6 @@ const TPAFCircularVisualization: React.FC = () => {
             
             policySegments.push(segment);
             
-            // Calculate position for policy dot (middle of segment)
             const centerAngle = (segmentStartAngle + segmentEndAngle) / 2;
             const midRadius = (ring.innerRadius + ring.outerRadius) / 2;
             const position = polarToCartesian(centerAngle, midRadius);
@@ -707,7 +657,7 @@ const TPAFCircularVisualization: React.FC = () => {
                 Find Experts
               </a>
 
-              {/* Search Box - Now last item */}
+              {/* Search Box */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white" />
                 <input
@@ -723,240 +673,37 @@ const TPAFCircularVisualization: React.FC = () => {
         </div>
       </div>
 
-
-      {/* Policy Details - Fixed size with scrollable content */}
-      {/* Policy Details - Dynamic size with hover/selected states */}
-      <div className="w-full flex justify-center mb-2">
-        <div 
-          className="bg-white rounded-xl shadow-md overflow-hidden transition-all duration-200"
-          style={{ 
-            width: 'min(1448px, 95vw)',
-            height: selectedPolicy ? '250px' : '125px',
-            display: 'flex',
-            marginTop: '-1.4rem',
-            flexDirection: 'column'
-          }}
-        >
-          {selectedPolicy ? (
-            <>
-              {/* Header - Fixed height */}
-              <div className="flex items-center justify-between border-b border-gray-200 p-3 bg-white">
-                <div className="flex items-center gap-4">
-                  <h3 className="text-lg font-semibold text-black">Policy Details</h3>
-                  <button 
-                    onClick={() => toggleSavedPolicy(selectedPolicy.id)}
-                    className="flex items-center gap-1 text-sm"
-                  >
-                    {savedPolicies.has(selectedPolicy.id) ? (
-                      <>
-                        <BookmarkCheck className="w-4 h-4 text-yellow-500" />
-                        <span className="text-yellow-600">Saved</span>
-                      </>
-                    ) : (
-                      <>
-                        <Bookmark className="w-4 h-4 text-gray-400" />
-                        <span className="text-gray-500">Save to Journey</span>
-                      </>
-                    )}
-                  </button>
-                  <button 
-                    className="text-sm text-blue-600 hover:text-blue-800 whitespace-nowrap"
-                    onClick={() => {
-                      const phaseId = selectedPolicy.phaseId;
-                      setSelectedPolicy(null);
-                      setSelectedPhase(phaseId);
-                    }}
-                  >
-                    ← Back to Phase
-                  </button>
-                </div>
-                
-                <div className="flex">
-                  <button
-                    className={`py-1 px-3 font-medium text-sm ${
-                      activeTab === 'overview'
-                        ? 'text-blue-600 border-b-2 border-blue-600'
-                        : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                    onClick={() => setActiveTab('overview')}
-                  >
-                    Overview
-                  </button>
-                  <button
-                    className={`py-1 px-3 font-medium text-sm ${
-                      activeTab === 'examples'
-                        ? 'text-blue-600 border-b-2 border-blue-600'
-                        : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                    onClick={() => setActiveTab('examples')}
-                  >
-                    Examples
-                  </button>
-                  <button
-                    className={`py-1 px-3 font-medium text-sm ${
-                      activeTab === 'implementation'
-                        ? 'text-blue-600 border-b-2 border-blue-600'
-                        : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                    onClick={() => setActiveTab('implementation')}
-                  >
-                    Implementation
-                  </button>
-
-                  {selectedPolicy?.expertReferences && selectedPolicy.expertReferences.length > 0 && (
-                    <button
-                      className={`py-1 px-3 font-medium text-sm ${
-                        activeTab === 'experts'
-                          ? 'text-blue-600 border-b-2 border-blue-600'
-                          : 'text-gray-500 hover:text-gray-700'
-                      }`}
-                      onClick={() => setActiveTab('experts')}
-                    >
-                      Experts
-                    </button>
-                  )}
-                </div>
-              </div>
-              
-              {/* Scrollable Content Area */}
-              <div className="overflow-y-auto flex-1 p-3">
-                {/* Consistent Policy Title Section Across All Tabs */}
-                <div className="flex justify-between items-start mb-3">
-                  <div className="w-full">
-                    <div className="relative w-full mb-1">
-                      <div 
-                        className="h-[2px] w-full"
-                        style={{
-                          backgroundImage: `url(${dimensionBackgrounds[selectedPolicy.dimension as keyof typeof dimensionBackgrounds]})`,
-                          backgroundSize: 'cover',
-                          backgroundPosition: 'center',
-                          opacity: 0.9,
-                          position: 'relative',
-                          top: '-1px'
-                        }}
-                      />
-                    </div>
-                    
-                    <div className="pt-1">
-                      <h3 className="text-xl font-semibold text-gray-900">
-                        {selectedPolicy.title}
-                      </h3>
-                      <div className="text-sm text-gray-600 mt-1">
-                        {getPhase(selectedPolicy.phaseId)?.name} Phase
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {activeTab === 'overview' && (
-                  <div className="text-sm text-gray-700">
-                    {selectedPolicy.description}
-                  </div>
-                )}
-                
-                {activeTab === 'examples' && selectedPolicy.examples && (
-                  <div className="prose prose-sm max-w-none">
-                    <h4 className="font-semibold mb-2">Implementation Examples</h4>
-                    <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
-                      {selectedPolicy.examples}
-                    </p>
-                  </div>
-                )}
-                
-                {activeTab === 'implementation' && selectedPolicy.details && (
-                  <div className="prose prose-sm max-w-none">
-                    <h4 className="font-semibold mb-2">Implementation Guidance</h4>
-                    <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
-                      {selectedPolicy.details}
-                    </p>
-                  </div>
-                )}
-
-                {activeTab === 'experts' && (
-                  <div className="space-y-4">
-                    {isLoadingExperts ? (
-                      <div className="flex justify-center py-8">
-                        <RefreshCw className="w-8 h-8 animate-spin text-blue-600" />
-                      </div>
-                    ) : expertError ? (
-                      <div className="text-center py-4 text-red-500">
-                        {expertError}
-                        <button 
-                          onClick={() => window.location.reload()}
-                          className="mt-2 text-blue-600 hover:underline"
-                        >
-                          Try Again
-                        </button>
-                      </div>
-                    ) : experts.length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {experts.map(expert => (
-                          <ExpertCard key={expert.id} expert={expert} />
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-4 text-gray-500">
-                        <p>No expert recommendations available for this policy.</p>
-                        <a
-                          href="https://www.unesco.org/ethics-ai/en/ai-ethics-experts-without-borders"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline text-sm"
-                        >
-                          Search UNESCO's Expert Database
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </>
-          ) : hoveredPolicy ? (
-            <div className="p-3">
-              <div className="h-[3px] w-full mb-2 rounded-full"
-                style={{
-                  backgroundImage: `url(${dimensionBackgrounds[hoveredPolicy.dimension as keyof typeof dimensionBackgrounds]})`,
-                  backgroundSize: 'cover',
-                  opacity: 0.8
-                }}
-              />
-              <h3 className="text-lg font-medium line-clamp-1">{hoveredPolicy.title}</h3>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs px-2 py-1 rounded" 
-                  style={{ 
-                    backgroundColor: `${getDimension(hoveredPolicy.dimension)?.color}20`,
-                    color: getDimension(hoveredPolicy.dimension)?.color
-                  }}>
-                  {getDimension(hoveredPolicy.dimension)?.shortName}
-                </span>
-                <span className="text-xs text-gray-500">
-                  {hoveredPolicy.complexity}
-                </span>
-              </div>
-              <div className="text-xs text-gray-500 mt-2">
-                Click to see full details
-              </div>
-            </div>
-          ) : (
-            <div className="p-3">
-              <h3 className="text-lg font-semibold text-black mb-2">Policy Details</h3>
-              <div className="text-center py-2 text-gray-400">
-                <Info className="mx-auto h-5 w-5" />
-                <p className="mt-1 text-sm">Hover over policies to preview</p>
-              </div>
-            </div>
-          )}
+      {/* Policy Details - Fixed position, moved up to top of circle */}
+      <div className="w-full flex justify-center mb-4">
+        <div style={{ width: 'min(1448px, 95vw)' }}>
+          <PolicyDetails
+            selectedPolicy={selectedPolicy}
+            hoveredPolicy={hoveredPolicy}
+            savedPolicies={savedPolicies}
+            activeTab={activeTab}
+            experts={experts}
+            isLoadingExperts={isLoadingExperts}
+            expertError={expertError}
+            dimensionBackgrounds={dimensionBackgrounds}
+            onToggleSavedPolicy={toggleSavedPolicy}
+            onBackToPhase={() => {
+              const phaseId = selectedPolicy?.phaseId;
+              setSelectedPolicy(null);
+              setSelectedPhase(phaseId || null);
+            }}
+            onTabChange={setActiveTab}
+            getDimension={getDimension}
+            getPhase={getPhase}
+          />
         </div>
       </div>
 
-
-
-      {/* Main Content Container */}
+      {/* Main Content Container - Sidebar moved to top right */}
       <div className="w-full flex justify-center mb-8">
-        <div className="grid grid-cols-10 gap-3" style={{ width: 'min(1448px, 95vw)' }}>
-          {/* Circular Visualization - 70% */}
-          <div className="col-span-7">
-            <div className="bg-white rounded-2xl p-3 shadow-md min-h-[600px] border border-gray-100 relative">
+        <div className="grid grid-cols-4 gap-6" style={{ width: 'min(1448px, 95vw)' }}>
+          {/* Circular Visualization - Now takes 3/4 of space */}
+          <div className="col-span-3">
+            <div className="bg-white rounded-2xl p-4 shadow-md min-h-[700px] border border-gray-100 relative">
               <svg ref={svgRef} viewBox="0 0 800 500" className="w-full h-full" style={{ overflow: 'visible' }}>
                 {/* Background dimension slices */}
                 {data.dimensions.map(dimension => (
@@ -1083,7 +830,6 @@ const TPAFCircularVisualization: React.FC = () => {
                   
                   return (
                     <g key={`dimension-ring-${dimension.id}`}>
-                      {/* Define pattern for this dimension */}
                       <defs>
                         <pattern
                           id={`dimension-pattern-${dimension.id}`}
@@ -1102,7 +848,6 @@ const TPAFCircularVisualization: React.FC = () => {
                         </pattern>
                       </defs>
                       
-                      {/* Use pattern instead of solid color */}
                       <path
                         d={`
                           M ${polarToCartesian(segmentStartAngle, innerRadius).x},${polarToCartesian(segmentStartAngle, innerRadius).y}
@@ -1132,7 +877,6 @@ const TPAFCircularVisualization: React.FC = () => {
                       <text
                         fill="white"
                         fontSize="17"
-                        // fontWeight="bold"
                         textAnchor="middle"
                         dominantBaseline="middle"
                       >
@@ -1203,257 +947,29 @@ const TPAFCircularVisualization: React.FC = () => {
                   );
                 })}
               </svg>
-
-
-              {/* Tooltip */}
-              {/* {hoveredPolicy && (
-              <div 
-                className="absolute bg-black bg-opacity-90 text-white p-3 rounded-lg shadow-lg z-10 border border-white"
-                style={{
-                  left: `${policyPositions.find(p => p.policy.id === hoveredPolicy.id)?.x || 20}px`,
-                  top: `${(policyPositions.find(p => p.policy.id === hoveredPolicy.id)?.y || 20) - 60}px`,
-                  maxWidth: '250px',
-                  pointerEvents: 'none'
-                }}
-              >
-                <div className="text-sm font-semibold mb-1">
-                  {hoveredPolicy.title}
-                </div>
-                <div className="text-xs text-gray-300">
-                  {hoveredPolicy.complexity} complexity • {hoveredPolicy.connections?.length || 0} connections
-                </div>
-              </div>
-              )} */}
             </div>
           </div>
 
-          {/* Right Sidebar - Streamlined */}
-          <div className="col-span-3 space-y-4">
-            {/* Policy Attributes */}
-            <div className="bg-white rounded-xl p-4 shadow-md">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-base font-semibold text-black flex items-center gap-2">
-                  <Settings className="w-4 h-4" />
-                  Policy Attributes
-                </h3>
-                {(selectedDimension !== 'all' || selectedPhase || selectedKeyword || searchQuery) && (
-                  <button 
-                    onClick={resetAllSelections}
-                    className="text-xs text-blue-600 hover:text-blue-800"
-                  >
-                    Clear All
-                  </button>
-                )}
-              </div>
-              
-              <div className="space-y-3">
-                {/* Dimension Filter */}
-                {selectedDimension !== 'all' && (
-                  <div className="flex items-center justify-between bg-blue-50 px-3 py-2 rounded">
-                    <div className="flex items-center gap-2">
-                      <div 
-                        className="w-3 h-3 rounded-full" 
-                        style={{ backgroundColor: getDimension(selectedDimension)?.color }}
-                      />
-                      <span className="text-sm">Dimension: {getDimension(selectedDimension)?.shortName}</span>
-                    </div>
-                    <button 
-                      onClick={() => setSelectedDimension('all')}
-                      className="text-blue-600 hover:text-blue-800 text-xs"
-                    >
-                      ×
-                    </button>
-                  </div>
-                )}
-                
-                {/* Phase Filter */}
-                {selectedPhase && (
-                  <div className="flex items-center justify-between bg-purple-50 px-3 py-2 rounded">
-                    <span className="text-sm">Phase: {getPhase(selectedPhase)?.name}</span>
-                    <button 
-                      onClick={() => setSelectedPhase(null)}
-                      className="text-purple-600 hover:text-purple-800 text-xs"
-                    >
-                      ×
-                    </button>
-                  </div>
-                )}
-
-                {/* Complexity */}
-                {selectedPolicy && (
-                  <div className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded">
-                    <span className="text-sm">Complexity:</span>
-                    <span 
-                      className={`px-2 py-1 rounded text-xs font-medium ${
-                        selectedPolicy.complexity === 'high' ? 'bg-red-100 text-red-800' :
-                        selectedPolicy.complexity === 'medium' ? 'bg-yellow-100 text-yellow-800' : 
-                        'bg-green-100 text-green-800'
-                      }`}
-                    >
-                      {selectedPolicy.complexity}
-                    </span>
-                  </div>
-                )}
-
-                {/* Keywords */}
-                {selectedPolicy && (
-                  <div>
-                    <div className="text-sm font-medium text-gray-700 mb-2">Keywords:</div>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedPolicy.keywords.map((keyword: string) => (
-                        <button
-                          key={keyword}
-                          className={`px-2 py-1 rounded-full text-xs ${
-                            selectedKeyword === keyword
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
-                          onClick={() => setSelectedKeyword(
-                            selectedKeyword === keyword ? '' : keyword
-                          )}
-                        >
-                          {keyword}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Search Filter */}
-                {searchQuery && (
-                  <div className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded">
-                    <span className="text-sm">Search: "{searchQuery}"</span>
-                    <button 
-                      onClick={() => setSearchQuery('')}
-                      className="text-gray-600 hover:text-gray-800 text-xs"
-                    >
-                      ×
-                    </button>
-                  </div>
-                )}
-                
-                {selectedDimension === 'all' && !selectedPhase && !selectedKeyword && !searchQuery && (
-                  <div className="text-xs text-gray-500 text-center py-2">
-                    No active filters
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Legend */}
-            <div className="bg-white rounded-xl p-4 shadow-md">
-              <h3 className="text-base font-semibold text-black mb-3 flex items-center gap-2">
-                <Info className="w-4 h-4" />
-                Legend
-              </h3>
-              
-              <div className="space-y-3">
-                <div>
-                  <div className="text-xs font-medium text-gray-700 mb-2">Dimensions</div>
-                  <div className="grid grid-cols-1 gap-1">
-                    {data.dimensions.map((dimension) => (
-                      <div key={dimension.id} className="flex items-center gap-2 text-xs">
-                        <div 
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: dimension.color }}
-                        />
-                        <span className="text-gray-700">{dimension.shortName}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                <div>
-                  <div className="text-xs font-medium text-gray-700 mb-2">Phases (Rings)</div>
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-xs">
-                      <div className="w-3 h-1 bg-gray-300 rounded"></div>
-                      <span className="text-gray-700">Inner → Outer</span>
-                    </div>
-                    <div className="text-xs text-gray-500 ml-5">
-                      Analysis → Design → Implementation → Monitoring
-                    </div>
-                  </div>
-                </div>
-                
-                <div>
-                  <div className="text-xs font-medium text-gray-700 mb-2">Complexity</div>
-                  <div className="flex gap-2">
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 bg-green-500 rounded"></div>
-                      <span className="text-xs text-gray-700">Low</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 bg-yellow-500 rounded"></div>
-                      <span className="text-xs text-gray-700">Med</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 bg-red-500 rounded"></div>
-                      <span className="text-xs text-gray-700">High</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-
-
-            <div className="bg-white rounded-xl p-4 shadow-md">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-base font-semibold text-black flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4" />
-                  My Journey
-                </h3>
-                <button 
-                  onClick={downloadJourney}
-                  className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                >
-                  <Download className="w-3 h-3" />
-                  Export
-                </button>
-              </div>
-              
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-600">Policies Read</span>
-                  <span className="font-medium">
-                    {readPolicies.size}/{data.policies.length} ({Math.round((readPolicies.size/data.policies.length)*100)}%)
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-600">Policies Saved</span>
-                  <span className="font-medium">
-                    {savedPolicies.size}/{data.policies.length} ({Math.round((savedPolicies.size/data.policies.length)*100)}%)
-                  </span>
-                </div>
-                
-                {savedPolicies.size > 0 && (
-                  <div className="mt-3">
-                    <div className="text-xs font-medium text-gray-700 mb-1">By Dimension:</div>
-                    {data.dimensions.map(dim => {
-                      const count = data.policies.filter(p => 
-                        p.dimension === dim.id && savedPolicies.has(p.id)
-                      ).length;
-                      const total = data.policies.filter(p => p.dimension === dim.id).length;
-                      return (
-                        <div key={dim.id} className="flex items-center justify-between text-xs mb-1">
-                          <div className="flex items-center gap-2">
-                            <div 
-                              className="w-2 h-2 rounded-full" 
-                              style={{ backgroundColor: dim.color }}
-                            />
-                            <span>{dim.shortName}</span>
-                          </div>
-                          <span>
-                            {count}/{total} ({Math.round((count/total)*100)}%)
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
+          {/* Compact Sidebar - Now 1/4 of space */}
+          <div className="col-span-1">
+            <CompactSidebar
+              selectedDimension={selectedDimension}
+              selectedPhase={selectedPhase}
+              selectedPolicy={selectedPolicy}
+              selectedKeyword={selectedKeyword}
+              searchQuery={searchQuery}
+              readPolicies={readPolicies}
+              savedPolicies={savedPolicies}
+              data={data}
+              onResetAllSelections={resetAllSelections}
+              onSetSelectedDimension={setSelectedDimension}
+              onSetSelectedPhase={setSelectedPhase}
+              onSetSelectedKeyword={setSelectedKeyword}
+              onSetSearchQuery={setSearchQuery}
+              onDownloadJourney={downloadJourney}
+              getDimension={getDimension}
+              getPhase={getPhase}
+            />
           </div>
         </div>
       </div>
@@ -1461,9 +977,8 @@ const TPAFCircularVisualization: React.FC = () => {
       {/* Connected Policies Section - Collapsible */}
       {selectedPolicy && selectedPolicy.connections && selectedPolicy.connections.length > 0 && (
         <div className="w-full flex justify-center mb-8">
-          <div className="bg-white rounded-xl p-3 shadow-md" style={{ width: 'min(1448px, 95vw)' }}>
-            {/* Collapsible Header */}
-            <div className="flex justify-between items-center mb-3">
+          <div className="bg-white rounded-xl p-4 shadow-md" style={{ width: 'min(1448px, 95vw)' }}>
+            <div className="flex justify-between items-center mb-4">
               <button
                 onClick={() => setShowConnectedPolicies(!showConnectedPolicies)}
                 className="flex items-center gap-2 text-lg font-semibold text-black hover:text-blue-600 transition-colors"
@@ -1487,10 +1002,8 @@ const TPAFCircularVisualization: React.FC = () => {
               )}
             </div>
 
-            {/* Collapsible Content */}
             {showConnectedPolicies && (
               <>
-                {/* Keyword filter chips */}
                 <div className="mb-4">
                   <div className="text-sm font-medium text-gray-700 mb-2">Filter by shared keyword:</div>
                   <div className="flex flex-wrap gap-2">
@@ -1522,47 +1035,6 @@ const TPAFCircularVisualization: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Strength filter */}
-                <div className="mb-4">
-                  <div className="text-sm font-medium text-gray-700 mb-2">Connection strength:</div>
-                  <div className="flex flex-wrap gap-2">
-                    {[5, 4, 3, 2].map(strength => (
-                      <button
-                        key={strength}
-                        className={`px-3 py-1 rounded-full text-xs flex items-center gap-1 ${
-                          hoveredConnection?.strength === strength
-                            ? 'ring-2 ring-blue-500'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                        onMouseEnter={() => {
-                          // Highlight connections with this strength
-                          const strongConn = selectedPolicy.connections?.find(c => c.strength === strength);
-                          if (strongConn) {
-                            const targetPolicy = data.policies.find(p => p.id === strongConn.id);
-                            if (targetPolicy) {
-                              setHoveredConnection({
-                                source: selectedPolicy,
-                                target: targetPolicy,
-                                strength: strongConn.strength,
-                                keywords: strongConn.sharedKeywords
-                              });
-                            }
-                          }
-                        }}
-                        onMouseLeave={() => setHoveredConnection(null)}
-                      >
-                        <span className={`w-2 h-2 rounded-full ${
-                          strength === 5 ? 'bg-green-500' :
-                          strength === 4 ? 'bg-blue-500' :
-                          strength === 3 ? 'bg-yellow-500' : 'bg-red-500'
-                        }`} />
-                        {strength}/5
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Connection list - Compact */}
                 <div className="space-y-2 max-h-80 overflow-y-auto">
                   {selectedPolicy.connections
                     .filter(conn => 
@@ -1580,7 +1052,7 @@ const TPAFCircularVisualization: React.FC = () => {
                       return (
                         <div 
                           key={conn.id} 
-                          className={`p-2 border rounded cursor-pointer transition-all text-sm ${
+                          className={`p-3 border rounded cursor-pointer transition-all text-sm ${
                             isHovered ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50'
                           }`}
                           onClick={() => setSelectedPolicy(connectedPolicy)}
@@ -1598,7 +1070,7 @@ const TPAFCircularVisualization: React.FC = () => {
                             <div className="font-medium line-clamp-1 flex-1 pr-2">
                               {connectedPolicy.title}
                             </div>
-                            <span className={`px-1.5 py-0.5 rounded text-xs shrink-0 ${
+                            <span className={`px-2 py-1 rounded text-xs shrink-0 ${
                               conn.strength === 5 ? 'bg-green-100 text-green-800' :
                               conn.strength === 4 ? 'bg-blue-100 text-blue-800' :
                               conn.strength === 3 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
@@ -1606,11 +1078,11 @@ const TPAFCircularVisualization: React.FC = () => {
                               {conn.strength}/5
                             </span>
                           </div>
-                          <div className="flex flex-wrap gap-1 mt-1">
+                          <div className="flex flex-wrap gap-1 mt-2">
                             {conn.sharedKeywords.slice(0, 3).map(keyword => (
                               <span 
                                 key={keyword}
-                                className={`px-1.5 py-0.5 text-xs rounded ${
+                                className={`px-2 py-1 text-xs rounded ${
                                   keyword === selectedConnectionKeyword
                                     ? 'bg-blue-600 text-white'
                                     : isHovered
