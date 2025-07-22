@@ -4,6 +4,7 @@ import coverImage from '../assets/only-cover.png';
 import g20Logo from '../assets/g20-logo.png';
 
 
+
 interface JourneyExporterProps {
   savedPolicies: Set<number>;
   readPolicies: Set<number>;
@@ -148,23 +149,23 @@ export const useJourneyExporter = ({
   };
 
   // Helper: Calculate text height for layout planning
-  const calculateTextHeight = (
-    pdf: any,
-    text: string,
-    maxWidth: number,
-    pageWidth: number,
-    fontSize: number = DESIGN.typography.body
-  ): number => {
-    if (!text || text.trim() === '') return 0;
+  // const calculateTextHeight = (
+  //   pdf: any,
+  //   text: string,
+  //   maxWidth: number,
+  //   pageWidth: number,
+  //   fontSize: number = DESIGN.typography.body
+  // ): number => {
+  //   if (!text || text.trim() === '') return 0;
     
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(fontSize);
+  //   pdf.setFont('helvetica', 'normal');
+  //   pdf.setFontSize(fontSize);
     
-    const actualMaxWidth = Math.min(maxWidth, pageWidth - DESIGN.spacing.margin * 2);
-    const lines = pdf.splitTextToSize(text.trim(), actualMaxWidth);
+  //   const actualMaxWidth = Math.min(maxWidth, pageWidth - DESIGN.spacing.margin * 2);
+  //   const lines = pdf.splitTextToSize(text.trim(), actualMaxWidth);
     
-    return lines.length * (fontSize * DESIGN.layout.lineHeight) / 2.83465;
-  };
+  //   return lines.length * (fontSize * DESIGN.layout.lineHeight) / 2.83465;
+  // };
 
   // Helper: Draw section header with dimension styling (fixed width)
   const drawSectionHeader = (
@@ -174,7 +175,8 @@ export const useJourneyExporter = ({
     color: string,
     x: number,
     y: number,
-    width: number
+    width: number,
+    percentage?: number  // Add percentage parameter
   ): number => {
     const headerHeight = 25;
     
@@ -189,7 +191,7 @@ export const useJourneyExporter = ({
     
     // Check if title fits, truncate if necessary
     const titleWidth = pdf.getStringUnitWidth(title) * DESIGN.typography.sectionTitle / pdf.internal.scaleFactor;
-    const maxTitleWidth = width - 16; // Leave padding
+    const maxTitleWidth = width - (percentage ? 40 : 16); // Adjust width if showing percentage
     
     let displayTitle = title;
     if (titleWidth > maxTitleWidth) {
@@ -207,86 +209,93 @@ export const useJourneyExporter = ({
     pdf.setFontSize(DESIGN.typography.small);
     pdf.text(subtitle, x + 8, y + 20);
     
+    // Add percentage if provided
+    if (percentage !== undefined) {
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(12);
+      pdf.text(`${percentage}% completed`, x + width - 4, y + 5, { align: 'right' });
+    }
+    
     return headerHeight;
   };
 
-  // Helper: Draw policy card with proper text wrapping
-  const drawPolicyCard = (
-    pdf: any,
-    policy: Policy,
-    x: number,
-    y: number,
-    width: number,
-    dimColor: string,
-    policyIndex: number,
-    pageWidth: number  // Add pageWidth parameter
-  ): number => {
-    // Calculate required height based on content
-    const titleHeight = calculateTextHeight(
-      pdf, 
-      `${policyIndex + 1}. ${policy.title}`, 
-      width - 16, 
-      pageWidth,  // Add this
-      DESIGN.typography.heading
-    );
+  // // Helper: Draw policy card with proper text wrapping
+  // const drawPolicyCard = (
+  //   pdf: any,
+  //   policy: Policy,
+  //   x: number,
+  //   y: number,
+  //   width: number,
+  //   dimColor: string,
+  //   policyIndex: number,
+  //   pageWidth: number  // Add pageWidth parameter
+  // ): number => {
+  //   // Calculate required height based on content
+  //   const titleHeight = calculateTextHeight(
+  //     pdf, 
+  //     `${policyIndex + 1}. ${policy.title}`, 
+  //     width - 16, 
+  //     pageWidth,  // Add this
+  //     DESIGN.typography.heading
+  //   );
 
-    const descHeight = policy.description ? calculateTextHeight(
-      pdf, 
-      policy.description, 
-      width - 16, 
-      pageWidth,  // Add this
-      DESIGN.typography.body
-    ) : 0;
+  //   const descHeight = policy.description ? calculateTextHeight(
+  //     pdf, 
+  //     policy.description, 
+  //     width - 16, 
+  //     pageWidth,  // Add this
+  //     DESIGN.typography.body
+  //   ) : 0;
 
-    const detailsHeight = policy.details ? calculateTextHeight(
-      pdf, 
-      policy.details, 
-      width - 16, 
-      pageWidth,  // Add this
-      DESIGN.typography.body
-    ) : 0;
+  //   const detailsHeight = policy.details ? calculateTextHeight(
+  //     pdf, 
+  //     policy.details, 
+  //     width - 16, 
+  //     pageWidth,  // Add this
+  //     DESIGN.typography.body
+  //   ) : 0;
 
-    const examplesHeight = policy.examples ? calculateTextHeight(
-      pdf, 
-      policy.examples, 
-      width - 16, 
-      pageWidth,  // Add this
-      DESIGN.typography.body
-    ) : 0;
-    const cardHeight = Math.max(30, titleHeight + descHeight + detailsHeight + examplesHeight + 40); // Extra padding for headers and spacing
+  //   const examplesHeight = policy.examples ? calculateTextHeight(
+  //     pdf, 
+  //     policy.examples, 
+  //     width - 16, 
+  //     pageWidth,  // Add this
+  //     DESIGN.typography.body
+  //   ) : 0;
+  //   const cardHeight = Math.max(30, titleHeight + descHeight + detailsHeight + examplesHeight + 40); // Extra padding for headers and spacing
     
-    // Policy header background
-    pdf.setFillColor(...hexToRgb(DESIGN.colors.backgroundLight));
-    pdf.rect(x, y, width, 12, 'F');
+  //   // Policy header background
+  //   pdf.setFillColor(...hexToRgb(DESIGN.colors.backgroundLight));
+  //   pdf.rect(x, y, width, 12, 'F');
     
-    // Dimension indicator bar
-    pdf.setFillColor(...hexToRgb(dimColor));
-    pdf.rect(x, y, 4, 12, 'F');
+  //   // Dimension indicator bar
+  //   pdf.setFillColor(...hexToRgb(dimColor));
+  //   pdf.rect(x, y, 4, 12, 'F');
 
-    // Policy title - ensure it fits
-    pdf.setTextColor(...hexToRgb(DESIGN.colors.text));
-    pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(DESIGN.typography.heading);
+  //   // Policy title - ensure it fits
+  //   pdf.setTextColor(...hexToRgb(DESIGN.colors.text));
+  //   pdf.setFont('helvetica', 'bold');
+  //   pdf.setFontSize(DESIGN.typography.heading);
     
-    const titleText = `${policyIndex + 1}. ${policy.title}`;
-    const titleUsedHeight = renderParagraph(pdf, titleText, x + 8, y + 8, width - 16, pageWidth, DESIGN.typography.heading);
+  //   const titleText = `${policyIndex + 1}. ${policy.title}`;
+  //   const titleUsedHeight = renderParagraph(pdf, titleText, x + 8, y + 8, width - 16, pageWidth, DESIGN.typography.heading);
     
-    let contentY = y + 15 + titleUsedHeight;
+  //   let contentY = y + 15 + titleUsedHeight;
     
-    return cardHeight;
-  };
+  //   return cardHeight;
+  // };
 
-  // Helper: Load image as base64
-  const loadImageAsBase64 = async (imagePath: string): Promise<string | null> => {
-    try {
-      // For local development, we'll create a placeholder
-      // In production, you'd load the actual image
-      return null; // Will be handled gracefully
-    } catch (error) {
-      console.warn(`Could not load image: ${imagePath}`);
-      return null;
-    }
-  };
+  // // Helper: Load image as base64
+  // const loadImageAsBase64 = async (imagePath: string): Promise<string | null> => {
+  //   try {
+  //     // For local development, we'll create a placeholder
+  //     // In production, you'd load the actual image
+  //     return null; // Will be handled gracefully
+  //   } catch (error) {
+  //     console.warn(`Could not load image: ${imagePath}`);
+  //     return null;
+  //   }
+  // };
 
 
   const exportJourneyPDF = async () => {
@@ -309,9 +318,9 @@ export const useJourneyExporter = ({
 
 
       pdf.setProperties({
-        title: 'UNESCO TPAF AI Governance Implementation Plan',
+        // title: 'Aggregated report from UNESCO TPAF AI Governance Implementation Plan',
         subject: 'Selected Policy Options for Implementation',
-        author: 'UNESCO Technology Policy Assistance Facility',
+        // author: 'UNESCO Technology Policy Assistance Facility',
         keywords: 'AI governance, policy implementation, TPAF, UNESCO, policy options',
         creator: 'TPAF Platform'
       });
@@ -325,14 +334,14 @@ export const useJourneyExporter = ({
       // Calculate statistics
       const totalPolicies = data.policies.length;
       const savedCount = savedPolicies.size;
-      const readCount = readPolicies.size;
-      const completionRate = Math.round((savedCount / totalPolicies) * 100);
+      // const readCount = readPolicies.size;
+      // const completionRate = Math.round((savedCount / totalPolicies) * 100);
 
       // ==================== ENHANCED COVER PAGE WITH IMAGES ====================
       
       // Try to load the cover image and G20 logo
-      let coverImageData: string | null = null;
-      let g20LogoData: string | null = null;
+      // let coverImageData: string | null = null;
+      // let g20LogoData: string | null = null;
       
       try {
       } catch (error) {
@@ -349,8 +358,10 @@ export const useJourneyExporter = ({
     const coverImageMaxWidth = contentWidth; // Use full content width
     const coverImageAspectRatio = 1632 / 512; // 3.19
     const coverImageHeight = coverImageMaxWidth / coverImageAspectRatio; // ~54mm for A4
-    const coverImageY = margin + 60; // 60mm from top
-    const coverImageWidth = pageWidth;
+    // const coverImageY = margin + 60; // 60mm from top
+    // const coverImageWidth = pageWidth;
+    const coverHeight = pageWidth / coverImageAspectRatio;
+    // const coverY = (pageHeight - coverHeight) / 2;
 
 
     // 2. Transparent logo overlay
@@ -366,11 +377,12 @@ export const useJourneyExporter = ({
           pdf.addImage(
             coverImageBase64,
             'PNG',
-            0, 0,                   // Start at top-left corner
-            pageWidth,              // Full page width
-            coverImageHeight,       // Proportional height
-            undefined,              // Maintain aspect ratio
-            'SLOW'                  // Best quality
+            0,0,            // X: Full left edge
+            // coverY - 30,       // Y: Centered vertically
+            pageWidth,   // Full page width
+            coverHeight,  // Proportional height
+            undefined,    // Maintain aspect ratio
+            'SLOW'        // Best quality
           );
         } catch (error) {
           console.error('Cover image error:', error);
@@ -398,7 +410,7 @@ export const useJourneyExporter = ({
           pdf.setTextColor(255, 255, 255); // White text
           pdf.setFont('helvetica', 'bold');
           pdf.setFontSize(16);
-          pdf.text('AI Governance Framework', 
+          pdf.text('G20 Technology Policy Assistance Facility (TPAF)', 
             pageWidth / 2,
             logoY + logoDisplayHeight + 10,
             { align: 'center' }
@@ -420,7 +432,7 @@ export const useJourneyExporter = ({
       pdf.setTextColor(255, 255, 255);
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(24);
-      pdf.text('AI Governance', pageWidth / 2, coverCurrentY, { align: 'center' });
+      pdf.text('Report: AI Governance', pageWidth / 2, coverCurrentY, { align: 'center' });
       
       pdf.setFontSize(22);
       pdf.text('Implementation Plan', pageWidth / 2, coverCurrentY + 15, { align: 'center' });
@@ -428,16 +440,16 @@ export const useJourneyExporter = ({
       coverCurrentY += 35;
 
       // UNESCO and TPAF branding
-      pdf.setFillColor(255, 255, 255, 0.15);
-      pdf.rect(margin + 30, coverCurrentY, contentWidth - 60, 35, 'F');
+      // pdf.setFillColor(255, 255, 255, 0.15);
+      // pdf.rect(margin + 30, coverCurrentY, contentWidth - 60, 35, 'F');
       
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(16);
-      pdf.text('UNESCO', pageWidth / 2, coverCurrentY + 12, { align: 'center' });
+      // pdf.text('UNESCO', pageWidth / 2, coverCurrentY + 12, { align: 'center' });
       
       pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(12);
-      pdf.text('Technology Policy Assistance Facility', pageWidth / 2, coverCurrentY + 25, { align: 'center' });
+      pdf.setFontSize(15);
+      // pdf.text('Technology Policy Assistance Facility (TPAF)', pageWidth / 2, coverCurrentY + 25, { align: 'center' });
 
       coverCurrentY += 50;
 
@@ -448,8 +460,8 @@ export const useJourneyExporter = ({
 
       // Summary information at bottom
       const summaryBoxY = pageHeight - 80;
-      pdf.setFillColor(255, 255, 255, 0.1);
-      pdf.rect(margin + 20, summaryBoxY, contentWidth - 40, 50, 'F');
+      // pdf.setFillColor(255, 255, 255, 0.1);
+      // pdf.rect(margin + 20, summaryBoxY, contentWidth - 40, 50, 'F');
       
       pdf.setFontSize(DESIGN.typography.body);
       const summaryTextY = summaryBoxY + 15;
@@ -572,11 +584,7 @@ export const useJourneyExporter = ({
       currentY += 8;
 
       const principles = [
-        'Human Rights-Centered: All policies prioritize human rights, dignity, and fundamental freedoms in AI system design and deployment.',
-        'Multi-Stakeholder Engagement: Implementation involves government, civil society, private sector, and academic stakeholders throughout the process.',
-        'Risk-Based Framework: Regulatory approaches are proportionate to AI system risks, with stronger oversight for high-risk applications.',
-        'Adaptive Governance: Policies include mechanisms for continuous review and adaptation as AI technologies evolve.',
-        'International Cooperation: Strategies align with global AI governance initiatives and facilitate cross-border collaboration.'
+        '...'
       ];
 
       pdf.setFont('helvetica', 'normal');
@@ -598,6 +606,8 @@ export const useJourneyExporter = ({
         currentY = margin;
 
         const dimColor = getDimensionColor(group.dimension.id);
+        const totalPoliciesInDimension = data.policies.filter(p => p.dimension === group.dimension.id).length;
+        const percentageSaved = Math.round((group.policies.length / totalPoliciesInDimension) * 100);
 
         // Dimension header
         const headerHeight = drawSectionHeader(
@@ -607,9 +617,11 @@ export const useJourneyExporter = ({
           dimColor,
           margin,
           currentY,
-          contentWidth
+          contentWidth,
+          percentageSaved  // Pass the calculated percentage
         );
         currentY += headerHeight + DESIGN.spacing.section;
+
 
         // Dimension introduction
         pdf.setTextColor(...hexToRgb(DESIGN.colors.text));
@@ -937,7 +949,7 @@ export const useJourneyExporter = ({
         pdf.setFontSize(DESIGN.typography.tiny);
         
         // Left: Document title
-        pdf.text('UNESCO TPAF - AI Governance Implementation Plan', margin, pageHeight - 7);
+        // pdf.text('AI Governance Implementation Plan Report', margin, pageHeight - 7);
         
         // Center: Confidential marking
         pdf.text('CONFIDENTIAL', pageWidth / 2, pageHeight - 7, { align: 'center' });
@@ -991,7 +1003,7 @@ export const useJourneyExporter = ({
         generatedAt: new Date().toISOString(),
         version: '4.0',
         source: 'UNESCO TPAF Platform - Implementation Plan',
-        title: 'AI Governance Implementation Plan'
+        title: 'Report: AI Governance Implementation Plan'
       },
       summary: {
         totalAvailablePolicies: data.policies.length,

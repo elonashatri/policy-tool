@@ -18,6 +18,10 @@ import purpleBg from '../assets/dimension-bgs/purple-bg.png';
 import redBg from '../assets/dimension-bgs/red-bg.png';
 import yellowBg from '../assets/dimension-bgs/yellow-bg.png';
 
+interface TPAFCircularVisualizationProps {
+  onNavigateToHome?: () => void;
+}
+
 type PolicyPosition = {
   policy: Policy;
   x: number;
@@ -50,7 +54,9 @@ const phaseRingConfig = {
   'monitoring-and-evaluation': { innerRadius: 180, outerRadius: 210 }
 };
 
-const TPAFCircularVisualization: React.FC = () => {
+const TPAFCircularVisualization: React.FC<TPAFCircularVisualizationProps> = ({
+    onNavigateToHome
+  }) => {
   const expertCache = useRef(new Map<string, UNESCOExpert>()).current;
   const { data, loading, error, reloadData } = useTPAFData(process.env.PUBLIC_URL + '/data.xlsx');
   
@@ -81,7 +87,7 @@ const TPAFCircularVisualization: React.FC = () => {
   const [savedPolicies, setSavedPolicies] = useState<Set<number>>(new Set());
   const [expertError, setExpertError] = useState<string | null>(null);
 
-  const viewBoxWidth = 600;
+  const viewBoxWidth = 650;
   const viewBoxHeight = 500;
   const centerX = viewBoxWidth / 2;
   const centerY = viewBoxHeight / 2;
@@ -309,6 +315,13 @@ const TPAFCircularVisualization: React.FC = () => {
     }
   }, [selectedPolicy]);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      reloadData(); // Calls the data reload function
+    }, 300000); // 5 minute refresh
+    return () => clearInterval(interval);
+  }, []);
+  
   // Calculate visible policies based on filters
   const visiblePolicies = useMemo(() => {
     let result = data.policies;
@@ -421,11 +434,11 @@ const TPAFCircularVisualization: React.FC = () => {
     const policyPositions: PolicyPosition[] = [];
 
     const colorVariations = {
-      'infrastructure': ['#dbeafe', '#93c5fd', '#3b82f6', '#1d4ed8'],
-      'legislation': ['#fef3c7', '#fcd34d', '#f59e0b', '#d97706'],
-      'sustainability': ['#ede9fe', '#c4b5fd', '#8b5cf6', '#7e22ce'],
-      'economic': ['#fee2e2', '#fca5a5', '#ef4444', '#b91c1c'],
-      'education': ['#d1fae5', '#6ee7b7', '#10b981', '#047857']
+      'infrastructure': ['#a8c6fa', '#6a9ceb', '#3a72c2', '#20508e'],  // Blue
+      'legislation': ['#fde6a8', '#fbd575', '#f5b745', '#efae42'],     // Yellow
+      'sustainability': ['#d9b5ff', '#c387fa', '#a55aee', '#8724d3'],  // Purple
+      'economic': ['#ffa3a3', '#f87373', '#e54e4e', '#cf3535'],        // Red
+      'education': ['#8fc9a8', '#5eaa7f', '#3a7d54', '#255a34']         // Green
     };
 
     if (data.dimensions.length > 0 && data.phases.length > 0) {
@@ -524,6 +537,13 @@ const TPAFCircularVisualization: React.FC = () => {
     );
   }
 
+  const colorVariations = {
+    'infrastructure': ['#a8c6fa', '#6a9ceb', '#3a72c2', '#20508e'],  // Blue
+    'legislation': ['#fde6a8', '#fbd575', '#f5b745', '#efae42'],     // Yellow
+    'sustainability': ['#d9b5ff', '#c387fa', '#a55aee', '#8724d3'],  // Purple
+    'economic': ['#ffa3a3', '#f87373', '#e54e4e', '#cf3535'],        // Red
+    'education': ['#8fc9a8', '#5eaa7f', '#3a7d54', '#255a34']         // Green
+  };
   // Calculate curved path for connections
   const calculateCurvedPath = (
     source: {x: number, y: number},
@@ -547,49 +567,59 @@ const TPAFCircularVisualization: React.FC = () => {
     return `M ${source.x} ${source.y} Q ${controlX} ${controlY}, ${target.x} ${target.y}`;
   };
 
+
   return (
-    <div className="w-full min-h-screen bg-white p-3">
-      {/* Header - Responsive */}
-      <div className="w-full mx-auto mb-8 flex justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
+      {/* Header - Same as TPAF Viz */}
+      <div className="w-full mb-8">
         <div 
-          className="flex flex-col rounded-lg shadow-md overflow-hidden relative"
+          className="flex flex-col shadow-md overflow-hidden relative"
           style={{
-            width: 'min(1448px, 95vw)',
-            height: 'min(380px, 32vw)',
+            width: '100vw', // Full viewport width
+            height: 'min(280px, 24vw)',
+            minHeight: '200px',
             backgroundImage: `url(${coverImage})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat'
+            marginLeft: 'calc(-50vw + 50%)', // Centers full-width div within container
+            marginRight: 'calc(-50vw + 50%)',
           }}
         >
-          {/* G20 Logo top left */}
-          <div className="absolute top-6 left-6">
+
+          {/* G20 Logo top right - moved more to the right */}
+          <div className="absolute top-4 left-60 sm:top-6 sm:right-40">
             <img 
               src={g20Logo} 
               alt="G20 Logo" 
-              className="h-16 object-contain"
+              className="h-16 sm:h-24 object-contain" 
             />
           </div>
 
-          {/* Title text - left middle */}
-          <div className="absolute left-12 top-1/2 transform -translate-y-1/2">
-            <h1 className="text-white font-bold" style={{
-              fontFamily: 'Aptos',
-              fontWeight: 700,
-              fontStyle: 'bold',
-              fontSize: '60px',
-              lineHeight: '72px',
-              letterSpacing: '0px'
-            }}>
+          {/* Title text - right aligned */}
+          <div className="absolute right-60 top-1/3 transform  -translate-y-1/2 text-right w-full px-4">
+            <h1 className="text-white font-regular text-3xl sm:text-4xl md:text-5xl lg:text-6xl leading-tight">
               G20 Technology Policy<br />Assistance Facility
             </h1>
           </div>
 
           {/* Controls - moved higher up with white text */}
-          <div className="absolute bottom-7 right-4">
-            <div className="flex gap-3 flex-wrap justify-end">
+          <div className="absolute left-1/2 bottom-2 sm:bottom-2 transform -translate-x-1/2 
+            min-w-[300px] max-w-[100vw] w-auto px-4 py-2">
+            <div className="flex flex-row flex-wrap justify-center gap-3 bg-black bg-opacity-70 p-3 rounded-xl backdrop-blur-sm">
+              
+              {/* Home Button */}
+              {onNavigateToHome && (
+                <button 
+                  onClick={onNavigateToHome}
+                  className="border border-white rounded-lg px-3 py-2 text-white text-xs sm:text-sm w-full sm:w-40 flex items-center justify-center gap-2 hover:bg-white hover:bg-opacity-10"
+                >
+                  <span>← Home</span>
+                </button>
+              )}
+
+              {/* Dimension Selector */}
               <select 
-                className="bg-transparent border border-white rounded-lg px-3 py-2 text-white text-sm w-40 placeholder-white"
+                className="bg-transparent border border-white rounded-lg px-3 py-2 text-white text-xs sm:text-sm w-full sm:w-40 hover:bg-white hover:bg-opacity-10"
                 value={selectedDimension}
                 onChange={(e) => {
                   setSelectedDimension(e.target.value);
@@ -602,20 +632,10 @@ const TPAFCircularVisualization: React.FC = () => {
                   <option key={dim.id} value={dim.id} className="text-gray-800">{dim.shortName}</option>
                 ))}
               </select>
-              
+
+              {/* Phase Selector */}
               <select 
-                className="bg-transparent border border-white rounded-lg px-3 py-2 text-white text-sm w-40"
-                value={selectedKeyword}
-                onChange={(e) => setSelectedKeyword(e.target.value)}
-              >
-                <option value="" className="text-gray-800">All Keywords</option>
-                {data.keywords.map(keyword => (
-                  <option key={keyword} value={keyword} className="text-gray-800">{keyword}</option>
-                ))}
-              </select>
-              
-              <select 
-                className="bg-transparent border border-white rounded-lg px-3 py-2 text-white text-sm w-40"
+                className="bg-transparent border border-white rounded-lg px-3 py-2 text-white text-xs sm:text-sm w-full sm:w-48 hover:bg-white hover:bg-opacity-10"
                 value={selectedPhase || ''}
                 onChange={(e) => {
                   setSelectedPhase(e.target.value || null);
@@ -634,25 +654,31 @@ const TPAFCircularVisualization: React.FC = () => {
                     </option>
                   ))}
               </select>
-              
+
+              {/* Connections Toggle */}
               <button 
-                className={`border border-white rounded-lg px-3 py-2 transition-colors text-sm w-40 ${
-                  showConnections ? 'bg-white bg-opacity-20 text-white' : 'bg-transparent text-white hover:bg-white hover:bg-opacity-10'
+                className={`border border-white rounded-lg px-3 py-2 text-white text-xs sm:text-sm w-full sm:w-40 flex items-center justify-center gap-2 ${
+                  showConnections ? 'bg-white bg-opacity-20' : 'bg-transparent hover:bg-white hover:bg-opacity-10'
                 }`}
                 onClick={() => setShowConnections(!showConnections)}
               >
-                {showConnections ? 'Hide' : 'Show'} Connections
+                <span>{showConnections ? 'Hide' : 'Show'} Connections</span>
               </button>
-              
+
+              {/* Reload Button */}
               <button 
                 onClick={() => {
                   reloadData();
                   resetAllSelections();
+                  setReadPolicies(new Set());
+                  setSavedPolicies(new Set());
+                  localStorage.removeItem('readPolicies');
+                  localStorage.removeItem('savedPolicies');
                 }}
-                className="border border-white rounded-lg px-3 py-2 text-white hover:bg-white hover:bg-opacity-10 flex items-center justify-center gap-2 text-sm w-40"
+                className="border border-white rounded-lg px-3 py-2 text-white text-xs sm:text-sm w-full sm:w-40 flex items-center justify-center gap-2 hover:bg-white hover:bg-opacity-10"
               >
-                <RefreshCw className="w-4 h-4" />
-                Reload
+                <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span>Reset All</span>
               </button>
 
               {/* Find Experts Button */}
@@ -660,24 +686,25 @@ const TPAFCircularVisualization: React.FC = () => {
                 href="https://www.unesco.org/ethics-ai/en/ai-ethics-experts-without-borders"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="border border-white rounded-lg px-3 py-2 text-white hover:bg-white hover:bg-opacity-10 text-sm w-40 text-center"
+                className="border border-white rounded-lg px-3 py-2 text-white text-xs sm:text-sm w-full sm:w-40 text-center block hover:bg-white hover:bg-opacity-10"
               >
                 Find Experts
               </a>
 
               {/* Search Box */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white" />
+              <div className="w-full sm:w-auto relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 text-white" />
                 <input
                   type="text"
                   placeholder="Search policies..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-transparent border border-white rounded-lg pl-10 pr-4 py-2 text-white text-sm w-48 placeholder-white focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
+                  className="bg-transparent border border-white rounded-lg pl-8 sm:pl-10 pr-2 sm:pr-4 py-2 text-white text-xs sm:text-sm w-full placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
                 />
               </div>
             </div>
           </div>
+
         </div>
       </div>
 
@@ -706,12 +733,11 @@ const TPAFCircularVisualization: React.FC = () => {
       </div>
 
 
-
       {/* Main Content Container - Sidebar moved to top right */}
       <div className="w-full flex justify-center mb-8">
-        <div className="grid grid-cols-8 gap-6" style={{ width: 'min(1448px, 95vw)' }}>
+        <div className="grid grid-cols-10 gap-6" style={{ width: 'min(1448px, 95vw)' }}>
           {/* Circular Visualization - Now takes 3/4 of space */}
-          <div className="col-span-5">
+          <div className="col-span-6">
             <div className="bg-white rounded-3xl p-4 shadow-md min-h-[700px] border border-gray-100 relative">
               <svg ref={svgRef} viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`} className="w-full h-full" style={{ overflow: 'visible' }}>
                 {/* Background dimension slices */}
@@ -744,13 +770,14 @@ const TPAFCircularVisualization: React.FC = () => {
                   />
                 ))}
                 
-                {/* Policy segments */}
+                {/* Policy segments - rendered first */}
                 {policySegments.map((segment, index) => {
                   const isRead = readPolicies.has(segment.policy.id);
                   const isSaved = savedPolicies.has(segment.policy.id);
                   
                   return (
                     <g key={`segment-group-${segment.policy.id}-${index}`}>
+                      {/* Segment path - always visible but with different opacity */}
                       <path
                         d={`
                           M ${polarToCartesian(segment.startAngle, segment.innerRadius, centerX, centerY).x},${polarToCartesian(segment.startAngle, segment.innerRadius, centerX, centerY).y}
@@ -762,72 +789,131 @@ const TPAFCircularVisualization: React.FC = () => {
                             ${polarToCartesian(segment.startAngle, segment.innerRadius, centerX, centerY).x},${polarToCartesian(segment.startAngle, segment.innerRadius, centerX, centerY).y}
                           Z
                         `}
-                        fill={isSaved ? segment.color : 'transparent'}
-                        stroke={isRead ? segment.color : '#ffffff'}
-                        strokeWidth={isRead ? 2 : 1}
+                        fill={isRead ? segment.color : `${segment.color}30`} // 30% opacity if not read
+                        stroke={segment.color}
+                        strokeWidth={2}
                         className="cursor-pointer hover:opacity-90 transition-all"
                         onClick={() => {
                           setSelectedPolicy(segment.policy);
                           markPolicyRead(segment.policy.id);
                         }}
                       />
+                    </g>
+                  );
+                })}
+
+                {/* Policy dots - always visible on top of segments */}
+                {policyPositions.map((position, index) => {
+                  const isSelected = selectedPolicy?.id === position.policy.id;
+                  const isHovered = hoveredPolicy?.id === position.policy.id;
+                  const isSaved = savedPolicies.has(position.policy.id);
+                  const hasConnectionToSelected = selectedPolicy 
+                    ? position.policy.connections?.some(c => c.id === selectedPolicy.id)
+                    : false;
+                  const dimension = getDimension(position.policy.dimension);
+                  
+                  return (
+                    <g key={`dot-${position.policy.id}-${index}`}>
+                      {/* White circle - always visible */}
+                      <circle
+                        cx={position.x}
+                        cy={position.y}
+                        r={isSelected ? 5 : isHovered ? 6 : hasConnectionToSelected ? 5 : 5} // Slightly larger dots
+                        fill="#ffffff"
+                        stroke={dimension?.color || '#000000'}
+                        strokeWidth={isSelected ? 2.5 : hasConnectionToSelected ? 2 : 1.5}
+                        className="cursor-pointer transition-all"
+                        onMouseEnter={() => handleMouseEnter(position.policy)}
+                        onMouseLeave={handleMouseLeave}
+                        onClick={() => setSelectedPolicy(position.policy)}
+                      />
+                      
+                      {/* X mark - only for saved policies */}
                       {isSaved && (
-                          <text
-                            x={polarToCartesian(
-                              (segment.startAngle + segment.endAngle) / 2,
-                              (segment.innerRadius + segment.outerRadius) / 2,
-                              centerX,  // Replaced hardcoded 400
-                              centerY   // Replaced hardcoded 250
-                            ).x}
-                            y={polarToCartesian(
-                              (segment.startAngle + segment.endAngle) / 2,
-                              (segment.innerRadius + segment.outerRadius) / 2,
-                              centerX,  // Replaced hardcoded 400
-                              centerY   // Replaced hardcoded 250
-                            ).y}
-                            textAnchor="middle"
-                            dominantBaseline="middle"
-                            fill="black"
-                            fontSize="12"
-                            fontWeight="bold"
-                          >
-                            {/*  maybe add a checkmark or something */}
-                            {/* ✓ */} 
-                          </text>
+                        <g transform={`translate(${position.x - 6}, ${position.y - 6})`}>
+                          <path
+                            d="M4 4L8 8 M4 8L8 4"  // Smaller X shape (12x12 bounding box)
+                            stroke={dimension?.color || '#000000'}
+                            strokeWidth="1.5"       // Thinner stroke
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            fill="none"
+                          />
+                        </g>
                       )}
                     </g>
                   );
                 })}
 
-                {/* Center Circle */}
-                <circle
-                  cx={centerX}
-                  cy={centerY}
-                  r="80"
-                  fill="#1e293b"
-                  stroke="white"
-                  strokeWidth="3"
-                />
+                  
+                {/* Center Progress Indicator */}
+                <g 
+                  className="cursor-pointer" 
+                  onClick={() => {
+                    if (selectedPolicy) setSelectedPolicy(null);
+                    else if (selectedDimension !== 'all') setSelectedDimension('all');
+                  }}
+                >
+                  {/* White base circle */}
+                  <circle
+                    cx={centerX}
+                    cy={centerY}
+                    r="70"
+                    fill="white"
+                    stroke={selectedPolicy 
+                      ? colorVariations[selectedPolicy.dimension as keyof typeof colorVariations][0] 
+                      : colorVariations[selectedDimension === 'all' 
+                          ? 'infrastructure' 
+                          : selectedDimension as keyof typeof colorVariations][0]}
+                    strokeWidth="6"
+                  />
 
-                {/* Center Text */}
-                <text
-                  x={centerX} 
-                  y={centerY - 10} 
-                  textAnchor="middle"
-                  alignmentBaseline="middle"
-                  className="text-lg font-bold fill-white"
-                >
-                  TPAF
-                </text>
-                <text
-                  x={centerX}  
-                  y={centerY + 10} 
-                  textAnchor="middle"
-                  alignmentBaseline="middle"
-                  className="text-xs fill-slate-300"
-                >
-                  AI Governance
-                </text>
+                  {/* Progress percentage text */}
+                  <text
+                    x={centerX}
+                    y={centerY}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    className="text-[30px] font-bold text-gray-800"  
+                    fill="#737373"  
+                  >
+                    {Math.round((readPolicies.size / data.policies.length) * 100)}%
+                  </text>
+
+                  {/* Progress track (dark gray) */}
+                  <circle
+                    cx={centerX}
+                    cy={centerY}
+                    r="60"
+                    fill="transparent"
+                    stroke="#334155" 
+                    strokeWidth="8"
+                    strokeOpacity="0.2"  
+                  />
+
+                  {/* Active progress indicator */}
+                  <circle
+                    cx={centerX}
+                    cy={centerY}
+                    r="60"
+                    fill="transparent"
+                    stroke="#a3a3a3"
+                    strokeWidth="8"
+                    strokeDasharray={`${(readPolicies.size / data.policies.length) * 377} 377`}
+                    strokeLinecap="round"
+                    transform={`rotate(-90 ${centerX} ${centerY})`}
+                  />
+                </g>
+
+                {/* Add this to your SVG defs for better text visibility */}
+                <defs>
+                  <filter id="textOutline" x="-0.8" y="-0.8" width="2.6" height="2.6">
+                    <feMorphology operator="dilate" radius="1" in="SourceAlpha" result="thicker" />
+                    <feFlood floodColor="#1e293b" result="flood" />
+                    <feComposite in="flood" in2="thicker" operator="in" result="outline" />
+                    <feComposite in="SourceGraphic" in2="outline" operator="over" />
+                  </filter>
+                </defs>
 
                 {/* Dimension Labels */}
                 {data.dimensions.map((dimension) => {
@@ -870,7 +956,7 @@ const TPAFCircularVisualization: React.FC = () => {
                           Z
                         `}
                         fill={`url(#dimension-pattern-${dimension.id})`}
-                        opacity={0.8}
+                        opacity={1}
                         stroke="white"
                         strokeWidth={0.5}
                       />
@@ -903,31 +989,7 @@ const TPAFCircularVisualization: React.FC = () => {
                   );
                 })}
 
-                {/* Policy dots */}
-                {policyPositions.map((position, index) => {
-                  const isSelected = selectedPolicy?.id === position.policy.id;
-                  const isHovered = hoveredPolicy?.id === position.policy.id;
-                  const hasConnectionToSelected = selectedPolicy 
-                    ? position.policy.connections?.some(c => c.id === selectedPolicy.id)
-                    : false;
-                  const dimension = getDimension(position.policy.dimension);
-                  
-                  return (
-                    <circle
-                      key={`dot-${position.policy.id}-${index}`}
-                      cx={position.x}  // Changed from centerX to position.x
-                      cy={position.y}  // Changed from centerY to position.y
-                      r={isSelected ? 6 : isHovered ? 5 : hasConnectionToSelected ? 5 : 4}
-                      fill="#ffffff"
-                      stroke={dimension?.color || '#000000'}
-                      strokeWidth={isSelected ? 2 : hasConnectionToSelected ? 2 : 1}
-                      className="cursor-pointer transition-all"
-                      onMouseEnter={() => handleMouseEnter(position.policy)}
-                      onMouseLeave={handleMouseLeave}
-                      onClick={() => setSelectedPolicy(position.policy)}
-                    />
-                  );
-                })}
+
 
                 {/* Connections between policies */}
                 {showConnections && getVisibleConnections().map((connection, index) => {
@@ -963,7 +1025,7 @@ const TPAFCircularVisualization: React.FC = () => {
 
           {/* Compact Sidebar - Now 1/4 of space */}
           {/* Policy Details - Moved to sidebar */}
-          <div className="col-span-3">
+          <div className="col-span-4">
             <PolicyDetails
               selectedPolicy={selectedPolicy}
               hoveredPolicy={hoveredPolicy}
