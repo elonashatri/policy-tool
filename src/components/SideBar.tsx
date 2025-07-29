@@ -88,7 +88,7 @@ const CompactSidebar: React.FC<SidebarProps> = ({
         {activeTab === 'journey' ? (
           <div className="space-y-3">
             {/* Progress Bar */}
-            <div className="flex justify-between text-sm">
+            {/* <div className="flex justify-between text-sm">
               <span className="text-gray-600">Progress:</span>
               <span className="font-medium">
                 {readPolicies.size}/{data.policies.length} ({Math.round((readPolicies.size/data.policies.length)*100)}%)
@@ -99,9 +99,9 @@ const CompactSidebar: React.FC<SidebarProps> = ({
                 className="bg-black h-2 rounded-full transition-all duration-300"  // Changed from bg-blue-500 to bg-black
                 style={{ width: `${(readPolicies.size/data.policies.length)*100}%` }}
               />
-            </div>
+            </div> */}
             
-            <div className="flex justify-between text-sm">
+            {/* <div className="flex justify-between text-sm">
               <span className="text-gray-600">Saved:</span>
               <span className="font-medium">
                 {savedPolicies.size}/{data.policies.length} ({Math.round((savedPolicies.size/data.policies.length)*100)}%)
@@ -111,8 +111,8 @@ const CompactSidebar: React.FC<SidebarProps> = ({
               <div 
                 className="bg-black h-2 rounded-full transition-all duration-300" 
                 style={{ width: `${(savedPolicies.size/data.policies.length)*100}%` }}
-              />
-            </div>
+              /> */}
+            {/* </div> */}
           </div>
         ) : (
           <div className="space-y-2">

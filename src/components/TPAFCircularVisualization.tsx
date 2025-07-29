@@ -605,105 +605,105 @@ const TPAFCircularVisualization: React.FC<TPAFCircularVisualizationProps> = ({
           {/* Controls - moved higher up with white text */}
           <div className="absolute left-1/2 bottom-2 sm:bottom-2 transform -translate-x-1/2 
             min-w-[300px] max-w-[100vw] w-auto px-4 py-2">
-            <div className="flex flex-row flex-wrap justify-center gap-3 bg-black bg-opacity-70 p-3 rounded-xl backdrop-blur-sm">
-              
-              {/* Home Button */}
-              {onNavigateToHome && (
-                <button 
-                  onClick={onNavigateToHome}
-                  className="border border-white rounded-lg px-3 py-2 text-white text-xs sm:text-sm w-full sm:w-40 flex items-center justify-center gap-2 hover:bg-white hover:bg-opacity-10"
-                >
-                  <span>← Home</span>
-                </button>
-              )}
-
-              {/* Dimension Selector */}
-              <select 
-                className="bg-transparent border border-white rounded-lg px-3 py-2 text-white text-xs sm:text-sm w-full sm:w-40 hover:bg-white hover:bg-opacity-10"
-                value={selectedDimension}
-                onChange={(e) => {
-                  setSelectedDimension(e.target.value);
-                  setSelectedPhase(null);
-                  setSelectedPolicy(null);
-                }}
-              >
-                <option value="all" className="text-gray-800">All Dimensions</option>
-                {data.dimensions.map(dim => (
-                  <option key={dim.id} value={dim.id} className="text-gray-800">{dim.shortName}</option>
-                ))}
-              </select>
-
-              {/* Phase Selector */}
-              <select 
-                className="bg-transparent border border-white rounded-lg px-3 py-2 text-white text-xs sm:text-sm w-full sm:w-48 hover:bg-white hover:bg-opacity-10"
-                value={selectedPhase || ''}
-                onChange={(e) => {
-                  setSelectedPhase(e.target.value || null);
-                  setSelectedPolicy(null);
-                }}
-              >
-                <option value="" className="text-gray-800">All Phases</option>
-                {data.phases
-                  .filter(phase => {
-                    if (selectedDimension === 'all') return true;
-                    return phase.policies.some(policy => policy.dimension === selectedDimension);
-                  })
-                  .map(phase => (
-                    <option key={phase.id} value={phase.id} className="text-gray-800">
-                      {phase.name.length > 20 ? `${phase.name.substring(0, 20)}...` : phase.name}
-                    </option>
-                  ))}
-              </select>
-
-              {/* Connections Toggle */}
+          <div className="flex flex-row flex-wrap justify-center gap-3 bg-black bg-opacity-70 p-3 rounded-xl backdrop-blur-sm">
+            
+            {/* Home Button */}
+            {onNavigateToHome && (
               <button 
-                className={`border border-white rounded-lg px-3 py-2 text-white text-xs sm:text-sm w-full sm:w-40 flex items-center justify-center gap-2 ${
-                  showConnections ? 'bg-white bg-opacity-20' : 'bg-transparent hover:bg-white hover:bg-opacity-10'
-                }`}
-                onClick={() => setShowConnections(!showConnections)}
-              >
-                <span>{showConnections ? 'Hide' : 'Show'} Connections</span>
-              </button>
-
-              {/* Reload Button */}
-              <button 
-                onClick={() => {
-                  reloadData();
-                  resetAllSelections();
-                  setReadPolicies(new Set());
-                  setSavedPolicies(new Set());
-                  localStorage.removeItem('readPolicies');
-                  localStorage.removeItem('savedPolicies');
-                }}
+                onClick={onNavigateToHome}
                 className="border border-white rounded-lg px-3 py-2 text-white text-xs sm:text-sm w-full sm:w-40 flex items-center justify-center gap-2 hover:bg-white hover:bg-opacity-10"
               >
-                <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span>Reset All</span>
+                <span>← Home</span>
               </button>
+            )}
 
-              {/* Find Experts Button */}
-              <a
-                href="https://www.unesco.org/ethics-ai/en/ai-ethics-experts-without-borders"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="border border-white rounded-lg px-3 py-2 text-white text-xs sm:text-sm w-full sm:w-40 text-center block hover:bg-white hover:bg-opacity-10"
-              >
-                Find Experts
-              </a>
+            {/* Dimension Selector */}
+            <select 
+              className="bg-transparent border border-white rounded-lg px-3 py-2 text-white text-xs sm:text-sm w-full sm:w-40 hover:bg-white hover:bg-opacity-10"
+              value={selectedDimension}
+              onChange={(e) => {
+                setSelectedDimension(e.target.value);
+                setSelectedPhase(null);
+                setSelectedPolicy(null);
+              }}
+            >
+              <option value="all" className="text-gray-800">All Dimensions</option>
+              {data.dimensions.map(dim => (
+                <option key={dim.id} value={dim.id} className="text-gray-800">{dim.shortName}</option>
+              ))}
+            </select>
 
-              {/* Search Box */}
-              <div className="w-full sm:w-auto relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 text-white" />
-                <input
-                  type="text"
-                  placeholder="Search policies..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-transparent border border-white rounded-lg pl-8 sm:pl-10 pr-2 sm:pr-4 py-2 text-white text-xs sm:text-sm w-full placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
-                />
-              </div>
+            {/* Phase Selector */}
+            <select 
+              className="bg-transparent border border-white rounded-lg px-3 py-2 text-white text-xs sm:text-sm w-full sm:w-48 hover:bg-white hover:bg-opacity-10"
+              value={selectedPhase || ''}
+              onChange={(e) => {
+                setSelectedPhase(e.target.value || null);
+                setSelectedPolicy(null);
+              }}
+            >
+              <option value="" className="text-gray-800">All Phases</option>
+              {data.phases
+                .filter(phase => {
+                  if (selectedDimension === 'all') return true;
+                  return phase.policies.some(policy => policy.dimension === selectedDimension);
+                })
+                .map(phase => (
+                  <option key={phase.id} value={phase.id} className="text-gray-800">
+                    {phase.name.length > 20 ? `${phase.name.substring(0, 20)}...` : phase.name}
+                  </option>
+                ))}
+            </select>
+
+            {/* Connections Toggle */}
+            <button 
+              className={`border border-white rounded-lg px-3 py-2 text-white text-xs sm:text-sm w-full sm:w-40 flex items-center justify-center gap-2 ${
+                showConnections ? 'bg-white bg-opacity-20' : 'bg-transparent hover:bg-white hover:bg-opacity-10'
+              }`}
+              onClick={() => setShowConnections(!showConnections)}
+            >
+              <span>{showConnections ? 'Hide' : 'Show'} Connections</span>
+            </button>
+
+            {/* Reload Button */}
+            <button 
+              onClick={() => {
+                reloadData();
+                resetAllSelections();
+                setReadPolicies(new Set());
+                setSavedPolicies(new Set());
+                localStorage.removeItem('readPolicies');
+                localStorage.removeItem('savedPolicies');
+              }}
+              className="border border-white rounded-lg px-3 py-2 text-white text-xs sm:text-sm w-full sm:w-40 flex items-center justify-center gap-2 hover:bg-white hover:bg-opacity-10"
+            >
+              <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span>Reset All</span>
+            </button>
+
+            {/* Find Experts Button */}
+            <a
+              href="https://www.unesco.org/ethics-ai/en/ai-ethics-experts-without-borders"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="border border-white rounded-lg px-3 py-2 text-white text-xs sm:text-sm w-full sm:w-40 text-center block hover:bg-white hover:bg-opacity-10"
+            >
+              Find Experts
+            </a>
+
+            {/* Search Box */}
+            <div className="w-full sm:w-auto relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 text-white" />
+              <input
+                type="text"
+                placeholder="Search policies..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="bg-transparent border border-white rounded-lg pl-8 sm:pl-10 pr-2 sm:pr-4 py-2 text-white text-xs sm:text-sm w-full placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
+              />
             </div>
           </div>
+        </div>
 
         </div>
       </div>
@@ -877,11 +877,11 @@ const TPAFCircularVisualization: React.FC<TPAFCircularVisualizationProps> = ({
                     className="text-[30px] font-bold text-gray-800"  
                     fill="#737373"  
                   >
-                    {Math.round((readPolicies.size / data.policies.length) * 100)}%
+                    {'TPAF'}
                   </text>
 
                   {/* Progress track (dark gray) */}
-                  <circle
+                  {/* <circle
                     cx={centerX}
                     cy={centerY}
                     r="60"
@@ -889,10 +889,10 @@ const TPAFCircularVisualization: React.FC<TPAFCircularVisualizationProps> = ({
                     stroke="#334155" 
                     strokeWidth="8"
                     strokeOpacity="0.2"  
-                  />
+                  /> */}
 
                   {/* Active progress indicator */}
-                  <circle
+                  {/* <circle
                     cx={centerX}
                     cy={centerY}
                     r="60"
@@ -902,7 +902,7 @@ const TPAFCircularVisualization: React.FC<TPAFCircularVisualizationProps> = ({
                     strokeDasharray={`${(readPolicies.size / data.policies.length) * 377} 377`}
                     strokeLinecap="round"
                     transform={`rotate(-90 ${centerX} ${centerY})`}
-                  />
+                  /> */}
                 </g>
 
                 {/* Add this to your SVG defs for better text visibility */}

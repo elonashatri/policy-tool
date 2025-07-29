@@ -17,21 +17,6 @@ const BeautifulTPAFLandingPage: React.FC<HomePageProps> = ({
 }) => {
   const [selectedPathway, setSelectedPathway] = useState<string>('');
 
-  // Navigation functions - now using the props instead of alerts
-  const navigateToCircularViz = () => {
-    onNavigateToExplore();
-  };
-
-  const navigateToRAMJourney = () => {
-    onNavigateToRAMJourney();
-  };
-
-  const navigateToCapacityBuilding = () => {
-    onNavigateToCapacityBuilding();
-  };
-
-  // Rest of your component stays exactly the same...
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
       {/* Header - Same as TPAF Viz */}
@@ -168,7 +153,7 @@ const BeautifulTPAFLandingPage: React.FC<HomePageProps> = ({
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8 mb-16">
+        <div id="entry-points" className="grid md:grid-cols-3 gap-8 mb-16">
           {/* Entry Point 1: RAM-Based - Blue Theme */}
           <div className="group relative">
             <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-sm shadow-black/5 border border-white/20 overflow-hidden h-full hover:shadow-xl hover:shadow-black/10 transition-all duration-500 hover:scale-105" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 8px 16px -4px rgba(0, 0, 0, 0.05)' }}>
@@ -203,14 +188,13 @@ const BeautifulTPAFLandingPage: React.FC<HomePageProps> = ({
                 </div>
                 
                 <p className="text-gray-600 leading-relaxed mb-6 text-sm">
-                  Get contextual policy guidance tailored to your current AI governance maturity and identified gaps.
+                  Upload your completed Readiness Assessment or take a quick evaluation to get contextual policy guidance tailored to your AI governance gaps and strengths.
                 </p>
 
                 <div className="bg-gradient-to-r from-[#a8c6fa]/20 to-[#6a9ceb]/20 rounded-xl p-4 mb-6 border-l-4 border-[#3a72c2]">
                   <p className="text-sm text-gray-700 italic">
                     "I need assistance at every stage of policy development."
                   </p>
-                  {/* <p className="text-xs text-[#20508e] font-medium mt-1">— LDC Representative</p> */}
                 </div>
 
                 <div className="space-y-2 mb-6 text-sm text-gray-600">
@@ -229,7 +213,7 @@ const BeautifulTPAFLandingPage: React.FC<HomePageProps> = ({
                 </div>
 
                 <button
-                  onClick={navigateToRAMJourney}
+                  onClick={onNavigateToRAMJourney}
                   className="w-full bg-gradient-to-r from-[#3a72c2] to-[#20508e] text-white py-3 px-6 rounded-xl font-medium hover:shadow-lg hover:shadow-[#3a72c2]/25 transition-all duration-300 flex items-center justify-center gap-2 text-sm group-hover:gap-4"
                 >
                   Start with Assessment Results
@@ -280,7 +264,6 @@ const BeautifulTPAFLandingPage: React.FC<HomePageProps> = ({
                   <p className="text-sm text-gray-700 italic">
                     "I need help in certain key areas of AI governance."
                   </p>
-                  {/* <p className="text-xs text-[#255a34] font-medium mt-1">— Developing Economy</p> */}
                 </div>
 
                 <div className="space-y-2 mb-6 text-sm text-gray-600">
@@ -299,7 +282,7 @@ const BeautifulTPAFLandingPage: React.FC<HomePageProps> = ({
                 </div>
 
                 <button
-                  onClick={navigateToCircularViz}
+                  onClick={onNavigateToExplore}
                   className="w-full bg-gradient-to-r from-[#3a7d54] to-[#255a34] text-white py-3 px-6 rounded-xl font-medium hover:shadow-lg hover:shadow-[#3a7d54]/25 transition-all duration-300 flex items-center justify-center gap-2 text-sm group-hover:gap-4"
                 >
                   Start Exploring Policies
@@ -350,7 +333,6 @@ const BeautifulTPAFLandingPage: React.FC<HomePageProps> = ({
                   <p className="text-sm text-gray-700 italic">
                     "I want to find best practices and learn from experiences."
                   </p>
-                  {/* <p className="text-xs text-[#cf3535] font-medium mt-1">— Advanced Economy</p> */}
                 </div>
 
                 <div className="space-y-2 mb-6 text-sm text-gray-600">
@@ -369,15 +351,15 @@ const BeautifulTPAFLandingPage: React.FC<HomePageProps> = ({
                 </div>
 
                 <button
-                  onClick={navigateToCapacityBuilding}
+                  onClick={onNavigateToCapacityBuilding}
                   className="w-full bg-gradient-to-r from-[#e54e4e] to-[#cf3535] text-white py-3 px-6 rounded-xl font-medium hover:shadow-lg hover:shadow-[#e54e4e]/25 transition-all duration-300 flex items-center justify-center gap-2 text-sm group-hover:gap-4 relative"
                 >
                   Start Learning Journey
                   <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
                   
-                  <div className="absolute -top-2 -right-2 bg-[#fde6a8] text-[#efae42] text-xs font-bold px-2 py-1 rounded-lg border border-[#efae42]/20">
+                  {/* <div className="absolute -top-2 -right-2 bg-[#fde6a8] text-[#efae42] text-xs font-bold px-2 py-1 rounded-lg border border-[#efae42]/20">
                     Soon
-                  </div>
+                  </div> */}
                 </button>
               </div>
             </div>
@@ -385,7 +367,7 @@ const BeautifulTPAFLandingPage: React.FC<HomePageProps> = ({
         </div>
 
         {/* Feature Highlights */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-sm shadow-black/5 border border-white/20 p-8 mb-16">
+        <div id="features" className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-sm shadow-black/5 border border-white/20 p-8 mb-16" style={{ boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 8px 16px -4px rgba(0, 0, 0, 0.05)' }}>
           <h3 className="text-2xl font-light text-gray-800 text-center mb-8">What You'll Get</h3>
           
           <div className="grid md:grid-cols-4 gap-6">
@@ -420,57 +402,6 @@ const BeautifulTPAFLandingPage: React.FC<HomePageProps> = ({
               <h4 className="font-semibold text-gray-900 mb-2">Training & Mentorship</h4>
               <p className="text-sm text-gray-600">Build long-term capacity to design and monitor policies yourself</p>
             </div>
-          </div>
-        </div>
-
-        {/* Stats Section */}
-        <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 rounded-3xl p-8 text-center text-white mb-16">
-          <h3 className="text-2xl font-light mb-8">Supporting Global AI Governance</h3>
-          
-          <div className="grid md:grid-cols-4 gap-8">
-            <div className="group">
-              <div className="text-4xl font-bold mb-2 group-hover:scale-110 transition-transform duration-300">73+</div>
-              <div className="text-blue-100 font-medium">Policy Options</div>
-            </div>
-            <div className="group">
-              <div className="text-4xl font-bold mb-2 group-hover:scale-110 transition-transform duration-300">5</div>
-              <div className="text-blue-100 font-medium">Key Dimensions</div>
-            </div>
-            <div className="group">
-              <div className="text-4xl font-bold mb-2 group-hover:scale-110 transition-transform duration-300">20+</div>
-              <div className="text-blue-100 font-medium">G20 Countries</div>
-            </div>
-            <div className="group">
-              <div className="text-4xl font-bold mb-2 group-hover:scale-110 transition-transform duration-300">100+</div>
-              <div className="text-blue-100 font-medium">Global Experts</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Capacity Building Preview */}
-        <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-3xl p-8 text-center">
-          <h3 className="text-2xl font-semibold text-gray-900 mb-4 flex items-center justify-center gap-3">
-            <Sparkles className="w-6 h-6 text-purple-600" />
-            Need More Than Just Policy Options?
-          </h3>
-          
-          <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
-            We help you build capacity to do it yourself
-          </p>
-
-          <div className="grid md:grid-cols-4 gap-4 max-w-4xl mx-auto">
-            {[
-              { icon: Target, title: 'Design Your Own Policy', desc: 'Interactive white-glove service to co-create policies with expert guidance' },
-              { icon: Users, title: 'Implementation Support', desc: 'Hands-on assistance with experts and programs to operationalize policies' },
-              { icon: TrendingUp, title: 'Monitoring & Evaluation', desc: 'Training and tools to track policy effectiveness and adapt strategies' },
-              { icon: GraduationCap, title: 'Build Capacity to Do It Yourself', desc: 'Comprehensive training programs for long-term capability' }
-            ].map((item, index) => (
-              <div key={index} className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 hover:bg-white/80 transition-all duration-300 hover:scale-105">
-                <item.icon className="w-8 h-8 text-purple-600 mx-auto mb-3" />
-                <h4 className="font-semibold text-gray-900 mb-2 text-sm">{item.title}</h4>
-                <p className="text-xs text-gray-600 leading-relaxed">{item.desc}</p>
-              </div>
-            ))}
           </div>
         </div>
       </div>
